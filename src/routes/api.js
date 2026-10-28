@@ -1,10 +1,18 @@
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import { config } from '../config.js';
-import { EMOTIONS, isEmotion } from '../emotions.js';
+import { EMOTIONS, isEmotion, ROBOT_ACTIONS } from '../emotions.js';
 import { Message } from '../models/Message.js';
 import { appearanceOf, FACE_STYLES, getPersonality, updatePersonality } from '../models/Personality.js';
+import { getSettings, publicSettings, sanitizeSettings, updateSettings } from '../models/Settings.js';
 import { chat } from '../services/ai.js';
+import { announce, feedAfter } from '../services/announce.js';
+import { clearCalendarCache, upcomingEvents } from '../services/calendar.js';
+import { getFocus, startFocus, stopFocus } from '../services/focus.js';
+import { deployReaction, runBriefing, scare } from '../services/routines.js';
+import { resetScarePlan } from '../services/scheduler.js';
+import { geocode, getWeather } from '../services/weather.js';
+import { DAY } from '../time.js';
 import { pcmToWav, synthesize, voiceEnabled } from '../services/voice.js';
 import { broadcast, listDevices, recentEvents, setEmotion, speak } from '../ws/robotSocket.js';
 
@@ -124,6 +132,112 @@ router.post(
     let sentTo = 0;
     if (speakOn) sentTo = await speak(String(speakOn), reply.text, reply.emotion);
     res.json({ ...reply, sentTo });
+  })
+);
+
+// ---------- Rutinas ----------
+
+router.get(
+  '/settings',
+  asyncRoute(async (req, res) => {
+    res.json(publicSettings(await getSettings()));
+  })
+);
+
+router.put(
+  '/settings',
+  asyncRoute(async (req, res) => {
+    const { update, errors } = sanitizeSettings(req.body);
+    if (errors.length) return res.status(400).json({ error: `Valores inválidos: ${errors.join(', ')}` });
+    const saved = await updateSettings(update);
+    if ('calendarUrl' in update) clearCalendarCache();
+    resetScarePlan();
+    res.json(publicSettings(saved));
+  })
+);
+
+router.get(
+  '/geo',
+  asyncRoute(async (req, res) => {
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2) return res.json([]);
+    res.json(await geocode(q));
+  })
+);
+
+router.get(
+  '/weather',
+  asyncRoute(async (req, res) => {
+    const s = await getSettings();
+    res.json({ city: s.city.name, ...(await getWeather(s.city, s.timezone)) });
+  })
+);
+
+router.get(
+  '/calendar/upcoming',
+  asyncRoute(async (req, res) => {
+    const s = await getSettings();
+    if (!s.calendarUrl) return res.json({ configured: false, events: [] });
+    const now = Date.now();
+    const events = await upcomingEvents(s, now, now + DAY);
+    res.json({ configured: true, events: events.slice(0, 10) });
+  })
+);
+
+// Saludo con hora, clima y agenda (también se dispara solo al despertarse)
+router.post(
+  '/briefing',
+  asyncRoute(async (req, res) => {
+    res.json(await runBriefing());
+  })
+);
+
+// Avisos que el panel tiene que mostrar (el robot los recibe por WebSocket)
+router.get('/feed', (req, res) => {
+  const after = Number(req.query.after);
+  res.json(feedAfter(Number.isFinite(after) ? after : -1));
+});
+
+// Pomodoro
+router.get('/focus', (req, res) => {
+  res.json({ focus: getFocus() });
+});
+
+router.post('/focus', (req, res) => {
+  const minutes = Number(req.body?.minutes ?? 25);
+  if (!Number.isInteger(minutes) || minutes < 1 || minutes > 180) {
+    return res.status(400).json({ error: 'Minutos inválidos (1 a 180)' });
+  }
+  const focus = startFocus(minutes);
+  announce({ kind: 'foco-inicio', emotion: 'pensando' });
+  res.json({ focus });
+});
+
+router.delete('/focus', (req, res) => {
+  stopFocus();
+  res.json({ focus: null });
+});
+
+// Probar una acción en el robot y el panel (ej. el susto)
+router.post(
+  '/action',
+  asyncRoute(async (req, res) => {
+    const { action, weather } = req.body || {};
+    if (action === 'susto') return res.json((await scare()) || { skipped: 'El susto solo funciona con el estilo terror' });
+    if (!ROBOT_ACTIONS.includes(action)) return res.status(400).json({ error: 'Acción inválida', actions: ROBOT_ACTIONS });
+    res.json(await announce({ kind: 'manual', actions: [action], weather }));
+  })
+);
+
+// Eventos externos: el script de deploy (o cualquier workflow) avisa cómo salió un deploy
+router.post(
+  '/hooks/event',
+  asyncRoute(async (req, res) => {
+    const { kind, status, repo, env } = req.body || {};
+    if (kind !== 'deploy' || !['success', 'failure'].includes(status)) {
+      return res.status(400).json({ error: 'Se espera { kind: "deploy", status: "success" | "failure" }' });
+    }
+    res.json((await deployReaction({ status, repo: repo ? String(repo).slice(0, 60) : '', env })) || { skipped: true });
   })
 );
 

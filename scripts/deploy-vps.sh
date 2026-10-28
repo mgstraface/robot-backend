@@ -53,7 +53,20 @@ FRONTEND_DIR="$BASE_DIR/robot-frontend"
 
 say() { printf '\n\033[1;36m▶ %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m! %s\033[0m\n' "$*"; }
-die() { printf '\033[1;31m✗ %s\033[0m\n' "$*"; exit 1; }
+
+# Le avisa al robot cómo salió el deploy (si el backend está arriba). Nunca hace fallar el deploy.
+notify() {
+  local status="$1" port token
+  port="$(grep -E '^PANEL_PORT=' "$BACKEND_DIR/.env" 2>/dev/null | cut -d= -f2-)"
+  token="$(grep -E '^ADMIN_TOKEN=' "$BACKEND_DIR/.env" 2>/dev/null | cut -d= -f2-)"
+  [ -n "$token" ] || return 0
+  curl -fsS --max-time 30 -X POST "http://127.0.0.1:${port:-$DEFAULT_PANEL_PORT}/api/hooks/event" \
+    -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+    -d "{\"kind\":\"deploy\",\"status\":\"$status\",\"env\":\"$ENV_NAME\",\"repo\":\"robot\"}" >/dev/null 2>&1 || true
+}
+
+die() { printf '\033[1;31m✗ %s\033[0m\n' "$*"; notify failure; exit 1; }
+trap 'notify failure' ERR
 
 say "Entorno: $ENV_NAME (rama $BRANCH → $DOMAIN)"
 
@@ -204,4 +217,6 @@ EOF
   fi
 fi
 
+trap - ERR
+notify success
 say "Listo: https://$DOMAIN"

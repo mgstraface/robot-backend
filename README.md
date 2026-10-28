@@ -64,6 +64,7 @@ Conexión: `wss://robot.tudominio.com/ws/robot?deviceId=robot-1&token=<DEVICE_TO
 | `{"type":"listen_end"}` | Terminó de grabar → el servidor transcribe y responde |
 | `{"type":"text","text":"hola"}` | Mensaje de texto (para probar sin micrófono) |
 | `{"type":"touch","zone":"cabeza"}` | Toque en un sensor (`cabeza`, `panza`, `espalda`) |
+| `{"type":"motion","event":"sacudir"}` | Sensor de movimiento: `sacudir` (mareado), `levantar` (sorprendido), `caer` (triste) |
 | `{"type":"ping"}` | Keepalive |
 
 **Servidor → robot**
@@ -73,12 +74,26 @@ Conexión: `wss://robot.tudominio.com/ws/robot?deviceId=robot-1&token=<DEVICE_TO
 | `{"type":"welcome","voice":true}` | Conexión aceptada |
 | `{"type":"appearance","eyeColor":"#d93a2b","faceStyle":"terror"}` | Color de las facciones y estilo de cara (al conectar y cada vez que cambia en el panel) |
 | `{"type":"emotion","emotion":"pensando"}` | Cambiar la cara |
+| `{"type":"action","action":"clima","weather":"lluvia"}` | Animación puntual: `apagon`, `risa`, `lagrima`, `colmillos`, `tercerOjo`, `clima` |
 | `{"type":"transcript","text":"..."}` | Lo que entendió |
 | `{"type":"reply","text":"...","emotion":"feliz"}` | La respuesta |
 | `{"type":"audio_start","sampleRate":24000}` + *binario* + `{"type":"audio_end"}` | Voz PCM 24 kHz para el parlante |
 | `{"type":"error","message":"..."}` | Algo falló (la cara pasa a `triste`) |
 
-Emociones: `neutral, feliz, triste, sorprendido, enojado, pensando, dormido, amor, curioso, escuchando`.
+Emociones: `neutral, feliz, triste, sorprendido, enojado, pensando, dormido, amor, curioso, escuchando, mareado`.
+
+## Rutinas
+
+Una vez por minuto el servidor revisa (`src/services/scheduler.js`), con los ajustes de la pestaña **Rutinas** del panel:
+
+- **Saludo** al despertarse (fin del horario de dormir): hora, clima (Open-Meteo, sin API key) y agenda del día.
+- **Reuniones**: avisa N minutos antes, leyendo la dirección secreta iCal del calendario (Google Calendar → Configuración → *Dirección secreta en formato iCal*). Soporta eventos repetidos, excepciones y cancelados.
+- **Agua**: recordatorio cada N minutos (no interrumpe un bloque de foco).
+- **Modo susto**: N apagones con risa macabra al día, a horas al azar, solo con la cara en estilo terror.
+- **Foco (pomodoro)**: `POST /api/focus {minutes}`; durante el bloque reta con humor si le hablás de otra cosa y al terminar avisa el descanso.
+- **Deploys**: `POST /api/hooks/event {kind:"deploy", status:"success"|"failure", repo, env}` con el token del panel. El script de deploy lo llama solo.
+
+Todo lo que dice por su cuenta va a los robots conectados y al panel (`GET /api/feed?after=<id>`).
 
 Para probar el WebSocket sin hardware: `npx wscat -c "ws://localhost:4100/ws/robot?deviceId=robot-1&token=..."` y mandar `{"type":"text","text":"hola"}`.
 

@@ -1,15 +1,15 @@
 import { WebSocketServer } from 'ws';
 import { config } from '../config.js';
-import { isEmotion, TOUCH_REACTIONS } from '../emotions.js';
+import { isEmotion, MOTION_REACTIONS, TOUCH_REACTIONS } from '../emotions.js';
 import { appearanceOf, getPersonality } from '../models/Personality.js';
 import { chat } from '../services/ai.js';
 import { synthesize, transcribe, voiceEnabled } from '../services/voice.js';
 
 /*
  * Protocolo robot ⇄ servidor (ver README para el detalle):
- *   Robot → servidor (JSON): hello, listen_start, listen_end, text, touch, ping
+ *   Robot → servidor (JSON): hello, listen_start, listen_end, text, touch, motion, ping
  *   Robot → servidor (binario): audio PCM 16 kHz / 16 bits / mono entre listen_start y listen_end
- *   Servidor → robot (JSON): welcome, appearance, emotion, transcript, reply, audio_start, audio_end, error, pong
+ *   Servidor → robot (JSON): welcome, appearance, emotion, action, transcript, reply, audio_start, audio_end, error, pong
  *   Servidor → robot (binario): audio PCM 24 kHz / 16 bits / mono entre audio_start y audio_end
  */
 
@@ -155,6 +155,16 @@ async function handleJson(deviceId, device, msg) {
       const emotion = TOUCH_REACTIONS[zone] || 'feliz';
       send(ws, { type: 'emotion', emotion });
       logEvent(deviceId, 'touch', { zone, emotion });
+      return;
+    }
+
+    case 'motion': {
+      // El robot ya reacciona solo; acá se registra y se le confirma la cara
+      const event = String(msg.event || '');
+      const emotion = MOTION_REACTIONS[event];
+      if (!emotion) return;
+      send(ws, { type: 'emotion', emotion });
+      logEvent(deviceId, 'motion', { event, emotion });
       return;
     }
 

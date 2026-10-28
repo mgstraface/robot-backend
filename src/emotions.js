@@ -10,7 +10,19 @@ export const EMOTIONS = [
   'amor',
   'curioso',
   'escuchando',
+  'mareado',
 ];
+
+// Acciones que el servidor puede pedirle al robot (además de las de su propia vida).
+// "clima" va acompañada de la categoría del clima (despejado, lluvia, tormenta…).
+export const ROBOT_ACTIONS = ['apagon', 'risa', 'lagrima', 'colmillos', 'tercerOjo', 'clima'];
+
+// Reacciones al sensor de movimiento (IMU) del robot.
+export const MOTION_REACTIONS = {
+  sacudir: 'mareado',
+  levantar: 'sorprendido',
+  caer: 'triste',
+};
 
 // Emociones que puede elegir la IA al responder (las de estado, como "pensando", las pone el servidor).
 export const AI_EMOTIONS = ['neutral', 'feliz', 'triste', 'sorprendido', 'enojado', 'amor', 'curioso'];

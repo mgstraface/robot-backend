@@ -3,6 +3,8 @@ import { config } from '../config.js';
 import { AI_EMOTIONS, parseEmotion } from '../emotions.js';
 import { Message } from '../models/Message.js';
 import { getPersonality } from '../models/Personality.js';
+import { getFocus } from './focus.js';
+import { formatTime } from '../time.js';
 
 let client = null;
 function getClient() {
@@ -18,13 +20,22 @@ Formato obligatorio: empezá SIEMPRE tu respuesta con tu emoción entre corchete
 Emociones posibles: ${AI_EMOTIONS.join(', ')}.
 Ejemplo: [feliz] ¡Qué bueno verte de nuevo!`;
 
-export function buildSystemPrompt(personality, now = new Date()) {
+const TZ = 'America/Argentina/Buenos_Aires';
+
+export function buildSystemPrompt(personality, now = new Date(), { focus = null } = {}) {
   const fecha = now.toLocaleString('es-AR', {
-    timeZone: 'America/Argentina/Buenos_Aires',
+    timeZone: TZ,
     dateStyle: 'full',
     timeStyle: 'short',
   });
-  return `${personality.systemPrompt.trim()}\n\nFecha y hora actual: ${fecha}.\n${EMOTION_INSTRUCTIONS}`;
+  let prompt = `${personality.systemPrompt.trim()}\n\nFecha y hora actual: ${fecha}.\n${EMOTION_INSTRUCTIONS}`;
+  if (focus) {
+    prompt +=
+      `\n\nAhora hay un bloque de foco (pomodoro) hasta las ${formatTime(focus.endsAt, TZ)}. ` +
+      'Si te habla de algo que no sea trabajo, retalo con humor en una sola oración y pedile que vuelva a lo suyo; ' +
+      'si es por trabajo, ayudalo corto.';
+  }
+  return prompt;
 }
 
 /**
@@ -77,7 +88,7 @@ export async function chat({ deviceId, text, source = 'text' }, deps = {}) {
     .lean();
 
   const messages = buildHistory([...recent.reverse(), { role: 'user', text: userText }]);
-  const raw = await model({ system: buildSystemPrompt(personality), messages });
+  const raw = await model({ system: buildSystemPrompt(personality, new Date(), { focus: getFocus() }), messages });
   const { emotion, text: reply } = parseEmotion(raw);
   const finalText = reply || '...';
 
@@ -86,5 +97,27 @@ export async function chat({ deviceId, text, source = 'text' }, deps = {}) {
     { deviceId, role: 'assistant', text: finalText, emotion, source },
   ]);
 
+  return { text: finalText, emotion };
+}
+
+/**
+ * Genera un aviso con la voz y la personalidad del robot (saludo, recordatorio, reacción a un deploy…),
+ * sin que sea parte de una conversación. Se guarda en el historial como mensaje del robot en "avisos".
+ */
+export async function generate(instruction, deps = {}) {
+  const model = deps.callModel || callModel;
+  const personality = await getPersonality();
+  const raw = await model({
+    system: buildSystemPrompt(personality),
+    messages: [
+      {
+        role: 'user',
+        content: `[Instrucción del sistema, no es un mensaje de la persona] ${instruction} Respondé solo con lo que vas a decir en voz alta.`,
+      },
+    ],
+  });
+  const { emotion, text } = parseEmotion(raw);
+  const finalText = text || '...';
+  await Message.create({ deviceId: 'avisos', role: 'assistant', text: finalText, emotion, source: 'text' });
   return { text: finalText, emotion };
 }
