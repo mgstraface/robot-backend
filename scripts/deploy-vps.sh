@@ -20,6 +20,10 @@ say() { printf '\n\033[1;36m▶ %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m! %s\033[0m\n' "$*"; }
 die() { printf '\033[1;31m✗ %s\033[0m\n' "$*"; exit 1; }
 
+# Un solo deploy a la vez (si se pushean los dos repos juntos, el segundo espera)
+exec 9>/tmp/robot-deploy.lock
+flock 9
+
 command -v docker >/dev/null || die "Falta docker"
 if docker compose version >/dev/null 2>&1; then
   COMPOSE="docker compose"

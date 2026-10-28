@@ -1,0 +1,27 @@
+name: Deploy al VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # permite correrlo a mano desde la pestaña Actions
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Deploy por SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 20m
+          # En el VPS la clave está restringida a correr solo el script de deploy,
+          # así que este comando es el mismo que se ejecuta de todas formas.
+          script: bash /root/robot/robot-backend/scripts/deploy-vps.sh

@@ -94,6 +94,12 @@ El script clona también `robot-frontend`, crea el `.env` con tokens nuevos y se
 
 Por último, el proxy principal del VPS tiene que mandar `robot.malestraface.com` → `127.0.0.1:8090`, con soporte de WebSocket para `/ws/` (headers `Upgrade` y `Connection`, timeout largo).
 
+### Deploy automático
+
+Cada push a `main` (en este repo o en `robot-frontend`) dispara `.github/workflows/deploy.yml`, que entra al VPS por SSH y corre `scripts/deploy-vps.sh`. También se puede correr a mano desde la pestaña **Actions → Deploy al VPS → Run workflow**.
+
+Secrets necesarios en **los dos repos** (Settings → Secrets and variables → Actions): `VPS_HOST`, `VPS_PORT`, `VPS_USER`, `VPS_SSH_KEY`. La clave pública está en `authorized_keys` del VPS restringida con `command=` para que solo pueda ejecutar el script de deploy.
+
 ## Notas
 
 - Corre como **una sola instancia**: los robots conectados viven en memoria.
