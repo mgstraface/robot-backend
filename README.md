@@ -75,6 +75,17 @@ Para probar el WebSocket sin hardware: `npx wscat -c "ws://localhost:4100/ws/rob
 
 ## Deploy en el VPS
 
+**Automático** (clona o actualiza los dos repos, crea el `.env` con tokens, levanta PM2, hace el build del panel y configura nginx):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mgstraface/robot-backend/main/scripts/deploy-vps.sh -o deploy-vps.sh
+bash deploy-vps.sh robot.tudominio.com
+```
+
+La primera vez se frena para que completes `ANTHROPIC_API_KEY` y `MONGO_URI`; después lo corrés de nuevo. Para actualizar, el mismo comando.
+
+**Manual:**
+
 ```bash
 cd /var/www            # o donde tengas ldp-backend
 git clone git@github.com:mgstraface/robot-backend.git
