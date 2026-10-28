@@ -73,60 +73,20 @@ Emociones: `neutral, feliz, triste, sorprendido, enojado, pensando, dormido, amo
 
 Para probar el WebSocket sin hardware: `npx wscat -c "ws://localhost:4100/ws/robot?deviceId=robot-1&token=..."` y mandar `{"type":"text","text":"hola"}`.
 
-## Deploy en el VPS
+## Deploy en el VPS (Docker)
 
-**Automático** (clona o actualiza los dos repos, crea el `.env` con tokens, levanta PM2, hace el build del panel y configura nginx):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/mgstraface/robot-backend/main/scripts/deploy-vps.sh -o deploy-vps.sh
-bash deploy-vps.sh robot.tudominio.com
-```
-
-La primera vez se frena para que completes `ANTHROPIC_API_KEY` y `MONGO_URI`; después lo corrés de nuevo. Para actualizar, el mismo comando.
-
-**Manual:**
+Todo corre en contenedores: `robot-backend`, `robot-mongo` (Mongo propio, no toca el de otros proyectos) y `robot-panel` (nginx con el panel, que además reenvía `/api` y `/ws` al backend). Solo se publica un puerto en el host: `127.0.0.1:8090`.
 
 ```bash
-cd /var/www            # o donde tengas ldp-backend
-git clone git@github.com:mgstraface/robot-backend.git
-cd robot-backend
-cp .env.example .env && nano .env
-npm ci --omit=dev      # o npm install la primera vez
-pm2 start ecosystem.config.cjs && pm2 save
+git clone git@github.com:mgstraface/robot-backend.git /opt/robot/robot-backend
+bash /opt/robot/robot-backend/scripts/deploy-vps.sh
 ```
 
-Nginx (subdominio `robot.tudominio.com`, sirve el panel y hace proxy a la API y al WebSocket):
+El script clona también `robot-frontend`, crea el `.env` con tokens nuevos y se frena para que completes `ANTHROPIC_API_KEY`. Después lo corrés de nuevo y levanta todo. Para actualizar, el mismo comando.
 
-```nginx
-server {
-    server_name robot.tudominio.com;
-
-    root /var/www/robot-frontend/dist;
-    index index.html;
-    location / { try_files $uri /index.html; }
-
-    location /api/ {
-        proxy_pass http://127.0.0.1:4100;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /ws/ {
-        proxy_pass http://127.0.0.1:4100;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_read_timeout 3600s;   # que no corte la conexión del robot
-    }
-}
-```
-
-Después: `sudo nginx -t && sudo systemctl reload nginx` y `sudo certbot --nginx -d robot.tudominio.com` para el HTTPS.
+Por último, el proxy principal del VPS tiene que mandar `robot.malestraface.com` → `127.0.0.1:8090`, con soporte de WebSocket para `/ws/` (headers `Upgrade` y `Connection`, timeout largo).
 
 ## Notas
 
-- Corre como **una sola instancia** de PM2: los robots conectados viven en memoria.
-- Podés usar el mismo MongoDB que la web, con otra base (`/robot`), así no se mezcla nada.
+- Corre como **una sola instancia**: los robots conectados viven en memoria.
 - La latencia total (STT + IA + TTS) depende de dónde esté el VPS. Para disimularla, el servidor manda `pensando` apenas recibe el audio.

@@ -1,0 +1,41 @@
+# Levanta todo el robot: backend + Mongo propio + panel (que también hace de proxy a /api y /ws).
+# Espera los dos repos uno al lado del otro:
+#   /ruta/robot-backend   ← acá está este archivo
+#   /ruta/robot-frontend
+#
+#   docker compose up -d --build
+#
+# El panel queda en 127.0.0.1:${PANEL_PORT} (8090 por defecto). El proxy principal del VPS
+# tiene que mandar robot.malestraface.com → ese puerto (o a este contenedor, si comparten red).
+
+services:
+  backend:
+    build: .
+    container_name: robot-backend
+    env_file: .env
+    environment:
+      MONGO_URI: ${MONGO_URI:-mongodb://robot-mongo:27017/robot}
+      PORT: 4100
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  mongo:
+    # Si el VPS no soporta AVX (Mongo 5+ no arranca), cambiá a mongo:4.4
+    image: mongo:7
+    container_name: robot-mongo
+    volumes:
+      - robot-mongo-data:/data/db
+    restart: unless-stopped
+
+  panel:
+    build: ../robot-frontend
+    container_name: robot-panel
+    ports:
+      - "127.0.0.1:${PANEL_PORT:-8090}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  robot-mongo-data:
