@@ -1,0 +1,23 @@
+{
+  "name": "robot-backend",
+  "version": "0.1.0",
+  "description": "Cerebro del robot mascota: API REST + WebSocket para el ESP32, IA con Claude, voz y memoria en Mongo",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "mongoose": "^8.9.0",
+    "ws": "^8.18.0"
+  }
+}
