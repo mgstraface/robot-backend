@@ -19,6 +19,14 @@ Cerebro del robot mascota. El robot (ESP32-S3) solo escucha, habla, muestra cara
 
 ## Correr en local
 
+La base de datos es la del VPS (misma memoria y personalidad que producción). Mongo no está expuesto a internet: se llega por un túnel SSH que dejás abierto en otra terminal mientras desarrollás:
+
+```bash
+ssh -p 5514 -N -L 27020:127.0.0.1:27020 root@149.50.145.115
+```
+
+Y en el `.env` local: `MONGO_URI=mongodb://127.0.0.1:27020/robot`
+
 ```bash
 cp .env.example .env     # completar ANTHROPIC_API_KEY, tokens y MONGO_URI
 npm install
