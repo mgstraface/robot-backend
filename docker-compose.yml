@@ -5,16 +5,17 @@
 #
 #   docker compose up -d --build
 #
-# El panel queda en 127.0.0.1:${PANEL_PORT} (8090 por defecto). El proxy principal del VPS
-# tiene que mandar robot.malestraface.com → ese puerto (o a este contenedor, si comparten red).
+# El mismo archivo sirve para producción y para el entorno de pruebas: lo que cambia está en el .env
+# (STACK, COMPOSE_PROJECT_NAME, PANEL_PORT, MONGO_PORT). Los servicios se hablan por nombre de
+# servicio (backend, mongo), así que los dos entornos no se cruzan aunque corran en el mismo VPS.
 
 services:
   backend:
     build: .
-    container_name: robot-backend
+    container_name: ${STACK:-robot}-backend
     env_file: .env
     environment:
-      MONGO_URI: ${MONGO_URI:-mongodb://robot-mongo:27017/robot}
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/robot}
       PORT: 4100
     depends_on:
       - mongo
@@ -23,18 +24,18 @@ services:
   mongo:
     # Si el VPS no soporta AVX (Mongo 5+ no arranca), cambiá a mongo:4.4
     image: mongo:7
-    container_name: robot-mongo
+    container_name: ${STACK:-robot}-mongo
     volumes:
       - robot-mongo-data:/data/db
     # Solo accesible desde el propio VPS (127.0.0.1). Para usarlo desde tu PC, abrí un túnel SSH:
-    #   ssh -p 5514 -N -L 27020:127.0.0.1:27020 root@149.50.145.115
+    #   ssh -p <puerto> -N -L 27020:127.0.0.1:27020 root@<vps>
     ports:
       - "127.0.0.1:${MONGO_PORT:-27020}:27017"
     restart: unless-stopped
 
   panel:
     build: ../robot-frontend
-    container_name: robot-panel
+    container_name: ${STACK:-robot}-panel
     ports:
       - "127.0.0.1:${PANEL_PORT:-8090}:80"
     depends_on:

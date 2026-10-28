@@ -34,7 +34,7 @@ router.get('/health', (req, res) => {
 router.use(requireAdmin);
 
 router.get('/config', (req, res) => {
-  res.json({ model: config.ai.model, voice: voiceEnabled(), emotions: EMOTIONS });
+  res.json({ model: config.ai.model, voice: voiceEnabled(), emotions: EMOTIONS, env: config.appEnv });
 });
 
 router.get(

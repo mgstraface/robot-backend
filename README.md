@@ -84,20 +84,25 @@ Para probar el WebSocket sin hardware: `npx wscat -c "ws://localhost:4100/ws/rob
 
 ## Deploy en el VPS (Docker)
 
-Todo corre en contenedores: `robot-backend`, `robot-mongo` (Mongo propio, no toca el de otros proyectos) y `robot-panel` (nginx con el panel, que además reenvía `/api` y `/ws` al backend). Solo se publica un puerto en el host: `127.0.0.1:8090`.
+Hay dos entornos en el mismo VPS, cada uno con sus contenedores y su propia base de datos:
+
+| Entorno | Rama | URL | Carpeta | Panel |
+|---|---|---|---|---|
+| Producción | `main` | robot.malestraface.com | `/root/robot` | `127.0.0.1:8090` |
+| Pruebas | `dev` | dev.robot.malestraface.com | `/root/robot-dev` | `127.0.0.1:8091` |
+
+Todo corre en contenedores (`backend`, `mongo` y `panel`, un nginx con el panel que además reenvía `/api` y `/ws` al backend). Cada entorno publica solo puertos en `127.0.0.1`.
 
 ```bash
-git clone git@github.com:mgstraface/robot-backend.git /root/robot/robot-backend
-bash /root/robot/robot-backend/scripts/deploy-vps.sh
+bash /root/robot/robot-backend/scripts/deploy-vps.sh        # producción
+bash /root/robot/robot-backend/scripts/deploy-vps.sh dev    # pruebas
 ```
 
-El script clona también `robot-frontend`, crea el `.env` con tokens nuevos y se frena para que completes `ANTHROPIC_API_KEY`. Después lo corrés de nuevo y levanta todo. Para actualizar, el mismo comando.
-
-Por último, el proxy principal del VPS tiene que mandar `robot.malestraface.com` → `127.0.0.1:8090`, con soporte de WebSocket para `/ws/` (headers `Upgrade` y `Connection`, timeout largo).
+La primera vez en producción, el script crea el `.env` con tokens nuevos y se frena para que completes `ANTHROPIC_API_KEY`. El de pruebas arma su `.env` a partir del de producción (misma API key y mismo token de panel, token de robot y base propios) y además crea su sitio de nginx y pide el certificado HTTPS.
 
 ### Deploy automático
 
-Cada push a `main` (en este repo o en `robot-frontend`) dispara `.github/workflows/deploy.yml`, que entra al VPS por SSH y corre `scripts/deploy-vps.sh`. También se puede correr a mano desde la pestaña **Actions → Deploy al VPS → Run workflow**.
+Cada push a `main` o `dev` (en este repo o en `robot-frontend`) dispara `.github/workflows/deploy.yml`, que entra al VPS por SSH y corre `scripts/deploy-vps.sh` para el entorno que corresponde. También se puede correr a mano desde la pestaña **Actions → Deploy al VPS → Run workflow**.
 
 Secrets necesarios en **los dos repos** (Settings → Secrets and variables → Actions): `VPS_HOST`, `VPS_PORT`, `VPS_USER`, `VPS_SSH_KEY`. La clave pública está en `authorized_keys` del VPS restringida con `command=` para que solo pueda ejecutar el script de deploy.
 

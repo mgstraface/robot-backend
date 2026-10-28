@@ -10,6 +10,8 @@ function required(name) {
 
 export const config = {
   port: Number(process.env.PORT || 4100),
+  // "prod" o "dev" (el panel muestra un aviso cuando es el entorno de pruebas)
+  appEnv: process.env.APP_ENV || 'prod',
   mongoUri: required('MONGO_URI'),
 
   // Token para el panel (frontend) y para el robot (ESP32). Usá valores largos y distintos.
