@@ -1,15 +1,16 @@
 import crypto from 'node:crypto';
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { config } from '../config.js';
 import { EMOTIONS, isEmotion, ROBOT_ACTIONS } from '../emotions.js';
 import { Message } from '../models/Message.js';
+import { isJpeg, MAX_PHOTO_BYTES, MAX_PHOTOS, Photo } from '../models/Photo.js';
 import { appearanceOf, FACE_STYLES, getPersonality, updatePersonality } from '../models/Personality.js';
 import { getSettings, publicSettings, sanitizeSettings, updateSettings } from '../models/Settings.js';
 import { chat } from '../services/ai.js';
 import { announce, feedAfter } from '../services/announce.js';
 import { clearCalendarCache, upcomingEvents } from '../services/calendar.js';
 import { getFocus, startFocus, stopFocus } from '../services/focus.js';
-import { deployReaction, runBriefing, scare } from '../services/routines.js';
+import { deployReaction, finishFocus, remindMeeting, remindWater, runBriefing, scare } from '../services/routines.js';
 import { resetScarePlan } from '../services/scheduler.js';
 import { geocode, getWeather } from '../services/weather.js';
 import { DAY } from '../time.js';
@@ -39,7 +40,62 @@ router.get('/health', (req, res) => {
   res.json({ ok: true, service: 'robot-backend', time: new Date().toISOString() });
 });
 
+// Fotos del portarretrato: las pueden leer el panel (token de admin) y el robot (token del robot)
+function requireAdminOrDevice(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (token && (safeEqual(token, config.adminToken) || safeEqual(token, config.deviceToken))) return next();
+  return res.status(401).json({ error: 'No autorizado' });
+}
+
+router.get(
+  '/photos',
+  requireAdminOrDevice,
+  asyncRoute(async (req, res) => {
+    const photos = await Photo.find({}, { data: 0 }).sort({ createdAt: 1 }).lean();
+    res.json(photos.map((p) => ({ id: String(p._id), size: p.size, createdAt: p.createdAt })));
+  })
+);
+
+router.get(
+  '/photos/:id',
+  requireAdminOrDevice,
+  asyncRoute(async (req, res) => {
+    if (!/^[0-9a-f]{24}$/i.test(req.params.id)) return res.status(404).json({ error: 'No encontrada' });
+    const p = await Photo.findById(req.params.id).lean();
+    if (!p) return res.status(404).json({ error: 'No encontrada' });
+    res.set('Cache-Control', 'private, max-age=86400');
+    // con .lean() Mongo devuelve un Binary (no un Buffer): se convierte con cuidado
+    const data = Buffer.isBuffer(p.data) ? p.data : Buffer.from(p.data.buffer ?? p.data);
+    res.type(p.mime || 'image/jpeg').send(data);
+  })
+);
+
 router.use(requireAdmin);
+
+router.post(
+  '/photos',
+  express.raw({ type: 'image/jpeg', limit: MAX_PHOTO_BYTES }),
+  asyncRoute(async (req, res) => {
+    if (!isJpeg(req.body)) return res.status(400).json({ error: 'Mandá la foto como JPEG' });
+    if ((await Photo.countDocuments()) >= MAX_PHOTOS) {
+      return res.status(400).json({ error: `Máximo ${MAX_PHOTOS} fotos: borrá alguna primero` });
+    }
+    const p = await Photo.create({ data: req.body, mime: 'image/jpeg', size: req.body.length });
+    broadcast({ type: 'photos', changed: true }); // el robot vuelve a sincronizar su tarjeta SD
+    res.json({ id: String(p._id), size: p.size, createdAt: p.createdAt });
+  })
+);
+
+router.delete(
+  '/photos/:id',
+  asyncRoute(async (req, res) => {
+    if (!/^[0-9a-f]{24}$/i.test(req.params.id)) return res.status(404).json({ error: 'No encontrada' });
+    await Photo.deleteOne({ _id: req.params.id });
+    broadcast({ type: 'photos', changed: true });
+    res.json({ ok: true });
+  })
+);
 
 router.get('/config', (req, res) => {
   res.json({ model: config.ai.model, voice: voiceEnabled(), emotions: EMOTIONS, env: config.appEnv });
@@ -226,6 +282,26 @@ router.post(
     if (action === 'susto') return res.json((await scare()) || { skipped: 'El susto solo funciona con el estilo terror' });
     if (!ROBOT_ACTIONS.includes(action)) return res.status(400).json({ error: 'Acción inválida', actions: ROBOT_ACTIONS });
     res.json(await announce({ kind: 'manual', actions: [action], weather }));
+  })
+);
+
+// Probar una rutina sin esperar a que ocurra (botón "Probar" del panel)
+const TRIES = {
+  saludo: () => runBriefing(),
+  agua: () => remindWater(),
+  reunion: () => remindMeeting({ uid: 'prueba', summary: 'Reunión de prueba', start: Date.now() + 10 * 60 * 1000 }, 10),
+  'deploy-ok': () => deployReaction({ status: 'success', repo: 'robot', env: 'prod', force: true }),
+  'deploy-falla': () => deployReaction({ status: 'failure', repo: 'robot', env: 'prod', force: true }),
+  susto: () => scare({ force: true }),
+  'foco-fin': () => finishFocus({ minutes: 25 }),
+};
+
+router.post(
+  '/try/:kind',
+  asyncRoute(async (req, res) => {
+    const run = TRIES[req.params.kind];
+    if (!run) return res.status(400).json({ error: 'Prueba desconocida', kinds: Object.keys(TRIES) });
+    res.json(await run());
   })
 );
 

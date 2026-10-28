@@ -48,6 +48,8 @@ Todas (salvo `/api/health`) llevan `Authorization: Bearer <ADMIN_TOKEN>`.
 | GET | `/api/robot/status` | Robots conectados y últimos eventos |
 | POST | `/api/robot/expression` | `{ deviceId?, emotion }` cambia la cara |
 | POST | `/api/robot/say` | `{ deviceId?, text, emotion? }` le hace decir algo |
+| GET / POST / DELETE | `/api/photos` | Fotos del portarretrato (JPEG ya achicado; GET acepta también el token del robot) |
+| POST | `/api/try/:kind` | Probar una rutina: `saludo`, `agua`, `reunion`, `deploy-ok`, `deploy-falla`, `susto`, `foco-fin` |
 | POST | `/api/chat` | `{ text, deviceId?, speakOn? }` chatear con la personalidad |
 
 ## Protocolo del robot (WebSocket)
@@ -74,6 +76,7 @@ Conexión: `wss://robot.tudominio.com/ws/robot?deviceId=robot-1&token=<DEVICE_TO
 | `{"type":"welcome","voice":true}` | Conexión aceptada |
 | `{"type":"appearance","eyeColor":"#d93a2b","faceStyle":"terror"}` | Color de las facciones y estilo de cara (al conectar y cada vez que cambia en el panel) |
 | `{"type":"emotion","emotion":"pensando"}` | Cambiar la cara |
+| `{"type":"photos","changed":true}` | Cambiaron las fotos del portarretrato: el robot vuelve a sincronizar su SD con `GET /api/photos` y `GET /api/photos/:id` (con su token) |
 | `{"type":"action","action":"clima","weather":"lluvia"}` | Animación puntual: `apagon`, `risa`, `lagrima`, `colmillos`, `tercerOjo`, `clima` |
 | `{"type":"transcript","text":"..."}` | Lo que entendió |
 | `{"type":"reply","text":"...","emotion":"feliz"}` | La respuesta |

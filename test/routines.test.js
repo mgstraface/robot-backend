@@ -165,3 +165,18 @@ test('briefingInstruction arma el contexto del saludo', () => {
   assert.match(text, /En Rosario está 18°C y despejado/);
   assert.match(text, /09:30 Daily/);
 });
+
+test('isJpeg reconoce JPEG por sus primeros bytes', async () => {
+  const { isJpeg } = await import('../src/models/Photo.js');
+  assert.equal(isJpeg(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00])), true);
+  assert.equal(isJpeg(Buffer.from('<svg></svg>')), false);
+  assert.equal(isJpeg('no es buffer'), false);
+});
+
+test('sanitizeSettings valida el portarretrato', () => {
+  const ok = sanitizeSettings({ frameEnabled: true, frameFaceSec: 45, framePhotoSec: 8 });
+  assert.deepEqual(ok.errors, []);
+  assert.deepEqual(ok.update, { frameEnabled: true, frameFaceSec: 45, framePhotoSec: 8 });
+  const bad = sanitizeSettings({ frameEnabled: 'si', framePhotoSec: 1 });
+  assert.deepEqual(bad.errors.sort(), ['frameEnabled', 'framePhotoSec']);
+});

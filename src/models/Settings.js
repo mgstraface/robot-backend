@@ -14,6 +14,9 @@ export const DEFAULT_SETTINGS = {
   calendarUrl: '', // dirección secreta iCal (.ics)
   meetingNoticeMin: 10, // cuántos minutos antes avisa
   deployReactions: true,
+  frameEnabled: false, // portarretrato: intercala la cara con fotos
+  frameFaceSec: 60, // cuánto muestra la cara entre foto y foto
+  framePhotoSec: 10, // cuánto muestra cada foto
 };
 
 const settingsSchema = new mongoose.Schema(
@@ -34,6 +37,9 @@ const settingsSchema = new mongoose.Schema(
     calendarUrl: { type: String, maxlength: 2000 },
     meetingNoticeMin: { type: Number, min: 1, max: 120 },
     deployReactions: Boolean,
+    frameEnabled: Boolean,
+    frameFaceSec: { type: Number, min: 10, max: 3600 },
+    framePhotoSec: { type: Number, min: 3, max: 120 },
   },
   { timestamps: true, minimize: false }
 );
@@ -88,6 +94,9 @@ export function sanitizeSettings(body = {}) {
   set('waterEveryMin', int(body.waterEveryMin, 0, 600));
   set('meetingNoticeMin', int(body.meetingNoticeMin, 1, 120));
   set('deployReactions', typeof body.deployReactions === 'boolean' ? body.deployReactions : undefined);
+  set('frameEnabled', typeof body.frameEnabled === 'boolean' ? body.frameEnabled : undefined);
+  set('frameFaceSec', int(body.frameFaceSec, 10, 3600));
+  set('framePhotoSec', int(body.framePhotoSec, 3, 120));
   if (body.calendarUrl !== undefined) {
     const url = String(body.calendarUrl || '').trim().replace(/^webcal:\/\//i, 'https://');
     if (url === '' || /^https:\/\/\S+$/i.test(url)) update.calendarUrl = url;

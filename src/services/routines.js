@@ -87,16 +87,16 @@ export async function finishFocus(focus) {
 }
 
 /** Susto: apagón y risa macabra. Solo tiene sentido con la cara en estilo terror. */
-export async function scare() {
+export async function scare({ force = false } = {}) {
   const p = await getPersonality();
-  if (p.faceStyle !== 'terror') return null;
+  if (p.faceStyle !== 'terror' && !force) return null;
   return announce({ kind: 'susto', actions: ['apagon', 'risa'] });
 }
 
 /** Reacción a un deploy (lo avisa el script de deploy o cualquier workflow con el token del panel). */
-export async function deployReaction({ status, repo, env }) {
+export async function deployReaction({ status, repo, env, force = false }) {
   const s = await getSettings();
-  if (!s.deployReactions) return null;
+  if (!s.deployReactions && !force) return null;
   const ok = status === 'success';
   const where = [repo, env === 'dev' ? 'en el entorno de pruebas' : env === 'prod' ? 'en producción' : ''].filter(Boolean).join(' ');
   const reply = await generate(
