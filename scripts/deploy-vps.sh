@@ -21,7 +21,13 @@ warn() { printf '\033[1;33m! %s\033[0m\n' "$*"; }
 die() { printf '\033[1;31m✗ %s\033[0m\n' "$*"; exit 1; }
 
 command -v docker >/dev/null || die "Falta docker"
-docker compose version >/dev/null 2>&1 || die "Falta el plugin 'docker compose'"
+if docker compose version >/dev/null 2>&1; then
+  COMPOSE="docker compose"
+elif command -v docker-compose >/dev/null; then
+  COMPOSE="docker-compose"
+else
+  die "Falta docker compose (ni el plugin ni docker-compose)"
+fi
 command -v openssl >/dev/null || die "Falta openssl"
 
 sync_repo() {
@@ -69,7 +75,7 @@ if ! docker ps --format '{{.Names}}' | grep -qx robot-panel; then
 fi
 
 say "Construyendo y levantando contenedores"
-docker compose up -d --build
+$COMPOSE up -d --build
 
 say "Verificando"
 for i in $(seq 1 20); do
@@ -84,5 +90,5 @@ for i in $(seq 1 20); do
 done
 
 warn "No responde todavía. Mirá los logs:"
-echo "  docker compose -f $BACKEND_DIR/docker-compose.yml logs --tail 50"
+echo "  $COMPOSE -f $BACKEND_DIR/docker-compose.yml logs --tail 50"
 exit 1
