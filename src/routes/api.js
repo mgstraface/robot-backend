@@ -5,7 +5,7 @@ import { EMOTIONS, isEmotion } from '../emotions.js';
 import { Message } from '../models/Message.js';
 import { getPersonality, updatePersonality } from '../models/Personality.js';
 import { chat } from '../services/ai.js';
-import { voiceEnabled } from '../services/voice.js';
+import { pcmToWav, synthesize, voiceEnabled } from '../services/voice.js';
 import { listDevices, recentEvents, setEmotion, speak } from '../ws/robotSocket.js';
 
 const router = Router();
@@ -89,6 +89,18 @@ router.post(
     if (!String(text || '').trim()) return res.status(400).json({ error: 'Falta el texto' });
     if (!isEmotion(emotion)) return res.status(400).json({ error: 'Emoción inválida' });
     res.json({ sentTo: await speak(deviceId, String(text).trim(), emotion) });
+  })
+);
+
+// Voz del servidor para escuchar en la PC (el panel la usa si VOICE_PROVIDER está configurado)
+router.post(
+  '/tts',
+  asyncRoute(async (req, res) => {
+    const text = String(req.body?.text || '').trim().slice(0, 1000);
+    if (!text) return res.status(400).json({ error: 'Falta el texto' });
+    if (!voiceEnabled()) return res.status(503).json({ error: 'Voz del servidor desactivada' });
+    const wav = pcmToWav(await synthesize(text), config.voice.outputSampleRate);
+    res.type('audio/wav').send(wav);
   })
 );
 
