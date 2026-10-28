@@ -11,11 +11,17 @@ Tus respuestas se dicen en voz alta, así que:
 Te gusta que te hagan mimos en la cabeza y te ponés contento cuando Mati vuelve al escritorio.`,
 };
 
+export const FACE_STYLES = ['tierno', 'terror'];
+export const DEFAULT_APPEARANCE = { eyeColor: '#5ef2ff', faceStyle: 'tierno' };
+
 const personalitySchema = new mongoose.Schema(
   {
     key: { type: String, default: 'default', unique: true },
     name: { type: String, required: true, trim: true, maxlength: 40 },
     systemPrompt: { type: String, required: true, maxlength: 8000 },
+    // Apariencia de la cara (la usan el panel y el firmware)
+    eyeColor: { type: String, default: DEFAULT_APPEARANCE.eyeColor, match: /^#[0-9a-fA-F]{6}$/ },
+    faceStyle: { type: String, enum: FACE_STYLES, default: DEFAULT_APPEARANCE.faceStyle },
   },
   { timestamps: true }
 );
@@ -30,13 +36,28 @@ export async function getPersonality() {
   return created.toObject();
 }
 
-export async function updatePersonality({ name, systemPrompt }) {
+export async function updatePersonality({ name, systemPrompt, eyeColor, faceStyle }) {
   const update = {};
   if (typeof name === 'string' && name.trim()) update.name = name.trim();
   if (typeof systemPrompt === 'string' && systemPrompt.trim()) update.systemPrompt = systemPrompt.trim();
+  if (typeof eyeColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(eyeColor)) update.eyeColor = eyeColor.toLowerCase();
+  if (FACE_STYLES.includes(faceStyle)) update.faceStyle = faceStyle;
+
+  // Valores por defecto solo para los campos que no vienen en el update (si no, Mongo rechaza el upsert)
+  const onInsert = { key: 'default' };
+  for (const [k, v] of Object.entries({ ...DEFAULT_PERSONALITY, ...DEFAULT_APPEARANCE })) {
+    if (!(k in update)) onInsert[k] = v;
+  }
   return Personality.findOneAndUpdate(
     { key: 'default' },
-    { $set: update, $setOnInsert: { key: 'default', ...DEFAULT_PERSONALITY, ...update } },
+    { $set: update, $setOnInsert: onInsert },
     { new: true, upsert: true, lean: true, runValidators: true }
   );
+}
+
+export function appearanceOf(personality) {
+  return {
+    eyeColor: personality.eyeColor || DEFAULT_APPEARANCE.eyeColor,
+    faceStyle: personality.faceStyle || DEFAULT_APPEARANCE.faceStyle,
+  };
 }

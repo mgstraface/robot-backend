@@ -3,10 +3,10 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { EMOTIONS, isEmotion } from '../emotions.js';
 import { Message } from '../models/Message.js';
-import { getPersonality, updatePersonality } from '../models/Personality.js';
+import { appearanceOf, FACE_STYLES, getPersonality, updatePersonality } from '../models/Personality.js';
 import { chat } from '../services/ai.js';
 import { pcmToWav, synthesize, voiceEnabled } from '../services/voice.js';
-import { listDevices, recentEvents, setEmotion, speak } from '../ws/robotSocket.js';
+import { broadcast, listDevices, recentEvents, setEmotion, speak } from '../ws/robotSocket.js';
 
 const router = Router();
 
@@ -47,8 +47,17 @@ router.get(
 router.put(
   '/personality',
   asyncRoute(async (req, res) => {
-    const { name, systemPrompt } = req.body || {};
-    res.json(await updatePersonality({ name, systemPrompt }));
+    const { name, systemPrompt, eyeColor, faceStyle } = req.body || {};
+    if (eyeColor !== undefined && !/^#[0-9a-fA-F]{6}$/.test(String(eyeColor))) {
+      return res.status(400).json({ error: 'Color inválido (usá formato #rrggbb)' });
+    }
+    if (faceStyle !== undefined && !FACE_STYLES.includes(faceStyle)) {
+      return res.status(400).json({ error: `Estilo inválido (${FACE_STYLES.join(', ')})` });
+    }
+    const updated = await updatePersonality({ name, systemPrompt, eyeColor, faceStyle });
+    // Los robots conectados cambian de cara al instante
+    if (eyeColor !== undefined || faceStyle !== undefined) broadcast({ type: 'appearance', ...appearanceOf(updated) });
+    res.json(updated);
   })
 );
 

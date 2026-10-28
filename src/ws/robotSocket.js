@@ -1,6 +1,7 @@
 import { WebSocketServer } from 'ws';
 import { config } from '../config.js';
 import { isEmotion, TOUCH_REACTIONS } from '../emotions.js';
+import { appearanceOf, getPersonality } from '../models/Personality.js';
 import { chat } from '../services/ai.js';
 import { synthesize, transcribe, voiceEnabled } from '../services/voice.js';
 
@@ -8,7 +9,7 @@ import { synthesize, transcribe, voiceEnabled } from '../services/voice.js';
  * Protocolo robot ⇄ servidor (ver README para el detalle):
  *   Robot → servidor (JSON): hello, listen_start, listen_end, text, touch, ping
  *   Robot → servidor (binario): audio PCM 16 kHz / 16 bits / mono entre listen_start y listen_end
- *   Servidor → robot (JSON): welcome, emotion, transcript, reply, audio_start, audio_end, error, pong
+ *   Servidor → robot (JSON): welcome, appearance, emotion, transcript, reply, audio_start, audio_end, error, pong
  *   Servidor → robot (binario): audio PCM 24 kHz / 16 bits / mono entre audio_start y audio_end
  */
 
@@ -46,6 +47,12 @@ function targets(deviceId) {
     return d ? [[deviceId, d]] : [];
   }
   return [...devices.entries()];
+}
+
+/** Manda un mensaje a todos los robots conectados. Devuelve a cuántos llegó. */
+export function broadcast(payload) {
+  for (const [, d] of devices) send(d.ws, payload);
+  return devices.size;
 }
 
 /** Cambia la cara del robot (o de todos si no se indica deviceId). Devuelve a cuántos llegó. */
@@ -192,6 +199,9 @@ export function attachRobotSocket(server) {
     devices.set(deviceId, device);
     logEvent(deviceId, 'connected');
     send(ws, { type: 'welcome', deviceId, voice: voiceEnabled(), inputSampleRate: config.voice.inputSampleRate });
+    getPersonality()
+      .then((p) => send(ws, { type: 'appearance', ...appearanceOf(p) }))
+      .catch((err) => console.error('[robot] no se pudo mandar la apariencia:', err.message));
 
     ws.on('message', async (data, isBinary) => {
       device.lastSeen = new Date().toISOString();

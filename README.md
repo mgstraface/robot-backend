@@ -42,7 +42,7 @@ Todas (salvo `/api/health`) llevan `Authorization: Bearer <ADMIN_TOKEN>`.
 |---|---|---|
 | GET | `/api/health` | Estado del servicio |
 | GET | `/api/config` | Modelo, si hay voz y lista de emociones |
-| GET / PUT | `/api/personality` | Ver / editar nombre y prompt de personalidad |
+| GET / PUT | `/api/personality` | Ver / editar nombre, prompt, `eyeColor` y `faceStyle` (`tierno` o `terror`) |
 | GET | `/api/messages?deviceId=&limit=` | Historial de conversación |
 | DELETE | `/api/messages?deviceId=` | Borrar memoria |
 | GET | `/api/robot/status` | Robots conectados y últimos eventos |
@@ -71,6 +71,7 @@ Conexión: `wss://robot.tudominio.com/ws/robot?deviceId=robot-1&token=<DEVICE_TO
 | Mensaje | Uso |
 |---|---|
 | `{"type":"welcome","voice":true}` | Conexión aceptada |
+| `{"type":"appearance","eyeColor":"#d93a2b","faceStyle":"terror"}` | Color de las facciones y estilo de cara (al conectar y cada vez que cambia en el panel) |
 | `{"type":"emotion","emotion":"pensando"}` | Cambiar la cara |
 | `{"type":"transcript","text":"..."}` | Lo que entendió |
 | `{"type":"reply","text":"...","emotion":"feliz"}` | La respuesta |
