@@ -2,16 +2,16 @@
 # Instala o actualiza el robot en el VPS con Docker (backend + Mongo + panel).
 #
 # Uso (en el VPS):
-#   git clone git@github.com:mgstraface/robot-backend.git /opt/robot/robot-backend
-#   bash /opt/robot/robot-backend/scripts/deploy-vps.sh
+#   git clone git@github.com:mgstraface/robot-backend.git /root/robot/robot-backend
+#   bash /root/robot/robot-backend/scripts/deploy-vps.sh
 #
 # Se puede volver a correr para actualizar: hace git pull y reconstruye los contenedores.
 # Variables opcionales:
-#   BASE_DIR=/opt/robot                  dónde quedan los dos repos
+#   BASE_DIR=/root/robot                  dónde quedan los dos repos
 #   REPO_BASE=git@github.com:mgstraface  (o https://github.com/mgstraface)
 set -euo pipefail
 
-BASE_DIR="${BASE_DIR:-/opt/robot}"
+BASE_DIR="${BASE_DIR:-/root/robot}"
 REPO_BASE="${REPO_BASE:-git@github.com:mgstraface}"
 BACKEND_DIR="$BASE_DIR/robot-backend"
 FRONTEND_DIR="$BASE_DIR/robot-frontend"

@@ -78,8 +78,8 @@ Para probar el WebSocket sin hardware: `npx wscat -c "ws://localhost:4100/ws/rob
 Todo corre en contenedores: `robot-backend`, `robot-mongo` (Mongo propio, no toca el de otros proyectos) y `robot-panel` (nginx con el panel, que además reenvía `/api` y `/ws` al backend). Solo se publica un puerto en el host: `127.0.0.1:8090`.
 
 ```bash
-git clone git@github.com:mgstraface/robot-backend.git /opt/robot/robot-backend
-bash /opt/robot/robot-backend/scripts/deploy-vps.sh
+git clone git@github.com:mgstraface/robot-backend.git /root/robot/robot-backend
+bash /root/robot/robot-backend/scripts/deploy-vps.sh
 ```
 
 El script clona también `robot-frontend`, crea el `.env` con tokens nuevos y se frena para que completes `ANTHROPIC_API_KEY`. Después lo corrés de nuevo y levanta todo. Para actualizar, el mismo comando.
