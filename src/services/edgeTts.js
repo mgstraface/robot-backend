@@ -27,7 +27,7 @@ export function secMsGec(now = Date.now()) {
 const escapeXml = (s) => String(s).replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[c]);
 const stamp = () => new Date().toUTCString().replace('GMT', 'GMT+0000 (Coordinated Universal Time)');
 
-/** Texto → PCM crudo (24 kHz, 16 bits, mono). pitch/rate en % (ej. "+10%", "-15%"). */
+/** Texto → MP3 (24 kHz, mono). pitch/rate en % (ej. "+10%", "-15%"). */
 export function edgeSynthesize(text, { voice = 'es-AR-TomasNeural', pitch = '+0%', rate = '+0%' } = {}) {
   const connId = crypto.randomUUID().replace(/-/g, '');
   const url = `${URL_WSS}?TrustedClientToken=${TOKEN}&ConnectionId=${connId}&Sec-MS-GEC=${secMsGecV2()}&Sec-MS-GEC-Version=${GEC_VERSION}`;
@@ -38,6 +38,9 @@ export function edgeSynthesize(text, { voice = 'es-AR-TomasNeural', pitch = '+0%
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0',
       Pragma: 'no-cache',
       'Cache-Control': 'no-cache',
+      'Accept-Encoding': 'gzip, deflate, br, zstd',
+      'Accept-Language': 'en-US,en;q=0.9',
+      Cookie: `muid=${crypto.randomBytes(16).toString('hex').toUpperCase()};`,
     },
   });
   const chunks = [];
@@ -61,12 +64,14 @@ export function edgeSynthesize(text, { voice = 'es-AR-TomasNeural', pitch = '+0%
             context: {
               synthesis: {
                 audio: {
-                  metadataoptions: { sentenceBoundaryEnabled: 'false', wordBoundaryEnabled: 'false' },
-                  outputFormat: 'raw-24khz-16bit-mono-pcm',
+                  metadataoptions: { sentenceBoundaryEnabled: 'true', wordBoundaryEnabled: 'false' },
+                  // el servicio solo acepta los formatos que usa Edge: MP3 de 24 kHz
+                  outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
                 },
               },
             },
-          })
+          }) +
+          '\r\n'
       );
       const ssml =
         `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='es-AR'>` +

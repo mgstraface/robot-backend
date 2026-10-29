@@ -117,13 +117,22 @@ export function forSpeech(text) {
     .replace(/\b(j[aeiou])(?:[\s,.…]+\1)+\b/gi, (m, syl) => syl.toLowerCase().repeat(Math.min(4, m.split(/[\s,.…]+/).length)));
 }
 
+/**
+ * Texto → audio, en el formato que dé el proveedor:
+ * { format: 'mp3', data } con Edge, o { format: 'pcm', data, sampleRate } con OpenAI / local.
+ */
+export async function synthesizeAudio(text) {
+  if (config.voice.ttsProvider === 'edge') {
+    const s = await getSettings();
+    return { format: 'mp3', data: await edgeSynthesize(forSpeech(text), { voice: s.voz, ...(TONOS[s.vozTono] || TONOS.normal) }) };
+  }
+  return { format: 'pcm', data: await synthesize(text), sampleRate: config.voice.outputSampleRate };
+}
+
 /** Texto → audio PCM 24 kHz, 16 bits, mono (listo para mandar al MAX98357A por I2S). */
 export async function synthesize(text) {
   if (!ttsEnabled()) throw new Error('Voz desactivada: configurá TTS_PROVIDER');
-  if (config.voice.ttsProvider === 'edge') {
-    const s = await getSettings();
-    return edgeSynthesize(forSpeech(text), { voice: s.voz, ...(TONOS[s.vozTono] || TONOS.normal) });
-  }
+  if (config.voice.ttsProvider === 'edge') throw new Error('Con Edge usá synthesizeAudio (devuelve MP3)');
   const local = config.voice.ttsProvider === 'local';
   const { url, headers } = endpoint('/audio/speech', local);
   const res = await fetch(url, {

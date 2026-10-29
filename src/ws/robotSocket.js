@@ -3,14 +3,14 @@ import { config } from '../config.js';
 import { isEmotion, MOTION_REACTIONS, TOUCH_REACTIONS } from '../emotions.js';
 import { appearanceOf, getPersonality } from '../models/Personality.js';
 import { chat } from '../services/ai.js';
-import { sttEnabled, synthesize, transcribe, ttsEnabled } from '../services/voice.js';
+import { sttEnabled, synthesizeAudio, transcribe, ttsEnabled } from '../services/voice.js';
 
 /*
  * Protocolo robot ⇄ servidor (ver README para el detalle):
  *   Robot → servidor (JSON): hello, listen_start, listen_end, text, touch, motion, ping
  *   Robot → servidor (binario): audio PCM 16 kHz / 16 bits / mono entre listen_start y listen_end
  *   Servidor → robot (JSON): welcome, appearance, emotion, action, gesture, transcript, reply, audio_start, audio_end, error, pong
- *   Servidor → robot (binario): audio PCM 24 kHz / 16 bits / mono entre audio_start y audio_end
+ *   Servidor → robot (binario): audio entre audio_start y audio_end (MP3, o PCM 16 bits mono según audio_start.format)
  */
 
 const AUDIO_CHUNK_BYTES = 4096;
@@ -66,11 +66,12 @@ export function setEmotion(deviceId, emotion) {
   return list.length;
 }
 
-async function streamAudio(ws, pcm) {
-  send(ws, { type: 'audio_start', sampleRate: config.voice.outputSampleRate, bytes: pcm.length });
-  for (let i = 0; i < pcm.length; i += AUDIO_CHUNK_BYTES) {
+/** Manda el audio en pedazos. format: 'pcm' (con sampleRate) o 'mp3' (el robot lo decodifica). */
+async function streamAudio(ws, { format, data, sampleRate }) {
+  send(ws, { type: 'audio_start', format, sampleRate, bytes: data.length });
+  for (let i = 0; i < data.length; i += AUDIO_CHUNK_BYTES) {
     if (ws.readyState !== ws.OPEN) return;
-    ws.send(pcm.subarray(i, i + AUDIO_CHUNK_BYTES));
+    ws.send(data.subarray(i, i + AUDIO_CHUNK_BYTES));
   }
   send(ws, { type: 'audio_end' });
 }
@@ -79,7 +80,7 @@ async function streamAudio(ws, pcm) {
 export async function speak(deviceId, text, emotion = 'neutral', gesture = null) {
   const list = targets(deviceId);
   if (list.length === 0) return 0;
-  const audio = ttsEnabled() ? await synthesize(text).catch(() => null) : null;
+  const audio = ttsEnabled() ? await synthesizeAudio(text).catch(() => null) : null;
   for (const [id, d] of list) {
     send(d.ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) });
     logEvent(id, 'reply', { text, emotion, from: 'panel' });
@@ -96,7 +97,7 @@ async function respond(deviceId, device, userText, source) {
     const { text, emotion, gesture } = await chat({ deviceId, text: userText, source });
     send(ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) });
     logEvent(deviceId, 'reply', { text, emotion, gesture });
-    if (ttsEnabled()) await synthesize(text).then((a) => streamAudio(ws, a)).catch((e) => console.error('[voz]', e.message));
+    if (ttsEnabled()) await synthesizeAudio(text).then((a) => streamAudio(ws, a)).catch((e) => console.error('[voz]', e.message));
   } finally {
     device.busy = false;
   }

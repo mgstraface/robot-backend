@@ -16,7 +16,7 @@ import { deployReaction, finishFocus, remindMeeting, remindWater, runBriefing, s
 import { resetScarePlan } from '../services/scheduler.js';
 import { geocode, getWeather } from '../services/weather.js';
 import { DAY } from '../time.js';
-import { pcmToWav, synthesize, ttsEnabled } from '../services/voice.js';
+import { pcmToWav, synthesizeAudio, ttsEnabled } from '../services/voice.js';
 import { VOCES } from '../services/edgeTts.js';
 import { broadcast, listDevices, recentEvents, setEmotion, speak } from '../ws/robotSocket.js';
 
@@ -175,8 +175,9 @@ router.post(
     const text = String(req.body?.text || '').trim().slice(0, 1000);
     if (!text) return res.status(400).json({ error: 'Falta el texto' });
     if (!ttsEnabled()) return res.status(503).json({ error: 'Voz del servidor desactivada' });
-    const wav = pcmToWav(await synthesize(text), config.voice.outputSampleRate);
-    res.type('audio/wav').send(wav);
+    const audio = await synthesizeAudio(text);
+    if (audio.format === 'mp3') return res.type('audio/mpeg').send(audio.data);
+    res.type('audio/wav').send(pcmToWav(audio.data, audio.sampleRate));
   })
 );
 
