@@ -2,9 +2,10 @@
 // No es una API oficial: si Microsoft la cambia puede dejar de andar; el panel cae a la voz del navegador.
 import crypto from 'node:crypto';
 import WebSocket from 'ws';
+import { secMsGecV2 } from './edgeDrm.js';
 
 const TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
-const GEC_VERSION = process.env.EDGE_GEC_VERSION || '1-130.0.2849.68';
+const GEC_VERSION = process.env.EDGE_GEC_VERSION || '2-143.0.3650.75';
 const URL_WSS = 'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1';
 
 export const VOCES = {
@@ -29,12 +30,12 @@ const stamp = () => new Date().toUTCString().replace('GMT', 'GMT+0000 (Coordinat
 /** Texto → PCM crudo (24 kHz, 16 bits, mono). pitch/rate en % (ej. "+10%", "-15%"). */
 export function edgeSynthesize(text, { voice = 'es-AR-TomasNeural', pitch = '+0%', rate = '+0%' } = {}) {
   const connId = crypto.randomUUID().replace(/-/g, '');
-  const url = `${URL_WSS}?TrustedClientToken=${TOKEN}&ConnectionId=${connId}&Sec-MS-GEC=${secMsGec()}&Sec-MS-GEC-Version=${GEC_VERSION}`;
+  const url = `${URL_WSS}?TrustedClientToken=${TOKEN}&ConnectionId=${connId}&Sec-MS-GEC=${secMsGecV2()}&Sec-MS-GEC-Version=${GEC_VERSION}`;
   const ws = new WebSocket(url, {
     headers: {
       Origin: 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold',
       'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0',
       Pragma: 'no-cache',
       'Cache-Control': 'no-cache',
     },

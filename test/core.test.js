@@ -70,3 +70,11 @@ test('voz local: WAV → PCM y cambio de frecuencia', async () => {
   assert.equal(up.length, 2400 * 2);
   assert.equal(up.readInt16LE(0), 0);
 });
+
+test('voz de Edge: token Sec-MS-GEC v2 igual al de referencia', async () => {
+  const { secMsGecV2 } = await import('../src/services/edgeDrm.js');
+  assert.equal(
+    secMsGecV2(1791888000),
+    '492D7694A183A45E-56E821F95D4579C5B7C7E33DC7303FF379EC36D510213555BBBB9EB17EF15876'
+  );
+});
