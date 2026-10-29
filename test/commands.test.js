@@ -73,3 +73,19 @@ test('frases leprosas: comando y frases propias', async () => {
   assert.equal(fraseLeprosa({ frasesLeprosas: ['Mi frase'] }), 'Mi frase');
   assert.ok(fraseLeprosa({ frasesLeprosas: [] }).length > 5);
 });
+
+test('noticias de Newell\'s: comando y lectura del RSS', async () => {
+  assert.deepEqual(parseCommand('Robi, tirame una noticia de Newell\'s'), { type: 'noticia' });
+  assert.deepEqual(parseCommand('¿qué novedades hay de la lepra?'), { type: 'noticia' });
+  const { parseRss } = await import('../src/services/noticias.js');
+  const xml = `<rss><channel>
+    <item><title>Newell&#39;s ganó el clásico - Olé</title><source url="x">Olé</source><pubDate>Wed, 28 Oct 2026 10:00:00 GMT</pubDate></item>
+    <item><title><![CDATA[Refuerzo para la Lepra - La Capital]]></title><source url="y">La Capital</source><pubDate>Thu, 29 Oct 2026 10:00:00 GMT</pubDate></item>
+  </channel></rss>`;
+  const items = parseRss(xml);
+  assert.equal(items[0].title, 'Refuerzo para la Lepra');
+  assert.equal(items[1].title, "Newell's ganó el clásico");
+  assert.equal(items[1].source, 'Olé');
+  const { forSpeech } = await import('../src/services/voice.js');
+  assert.equal(forSpeech("¡GOOOOOL DE NEWELL'S! Je, je, je."), "¡goool de newell's! jejeje.");
+});

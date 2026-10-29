@@ -96,6 +96,14 @@ export async function transcribe(pcm) {
   return String(data.text || '').trim();
 }
 
+/** Igual que en el panel: que no deletree MAYÚSCULAS ni lea las risas como letras. */
+export function forSpeech(text) {
+  return String(text || '')
+    .replace(/\b[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ']+\b/g, (w) => w.toLowerCase())
+    .replace(/([a-záéíóúñ])\1{3,}/gi, '$1$1$1')
+    .replace(/\b(j[aeiou])(?:[\s,.…]+\1)+\b/gi, (m, syl) => syl.toLowerCase().repeat(Math.min(4, m.split(/[\s,.…]+/).length)));
+}
+
 /** Texto → audio PCM 24 kHz, 16 bits, mono (listo para mandar al MAX98357A por I2S). */
 export async function synthesize(text) {
   if (!voiceEnabled()) throw new Error('Voz desactivada: configurá VOICE_PROVIDER (local u openai)');
@@ -107,7 +115,7 @@ export async function synthesize(text) {
     body: JSON.stringify({
       model: config.voice.ttsModel,
       voice: config.voice.ttsVoice,
-      input: text,
+      input: forSpeech(text),
       // la voz local (Piper) habla a 22 kHz: pedimos WAV para saber la frecuencia y la pasamos a 24 kHz
       response_format: local ? 'wav' : 'pcm',
     }),
