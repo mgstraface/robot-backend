@@ -11,6 +11,10 @@ export const EMOTIONS = [
   'curioso',
   'escuchando',
   'mareado',
+  'asustado',
+  'picaro',
+  'aburrido',
+  'riendo',
 ];
 
 // Acciones que el servidor puede pedirle al robot (además de las de su propia vida).
@@ -28,7 +32,7 @@ export const MOTION_REACTIONS = {
 };
 
 // Emociones que puede elegir la IA al responder (las de estado, como "pensando", las pone el servidor).
-export const AI_EMOTIONS = ['neutral', 'feliz', 'triste', 'sorprendido', 'enojado', 'amor', 'curioso'];
+export const AI_EMOTIONS = ['neutral', 'feliz', 'triste', 'sorprendido', 'enojado', 'amor', 'curioso', 'asustado', 'picaro', 'aburrido', 'riendo'];
 
 export function isEmotion(value) {
   return EMOTIONS.includes(value);
