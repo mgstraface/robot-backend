@@ -37,6 +37,9 @@ export const config = {
     provider: process.env.VOICE_PROVIDER || 'none',
     openaiApiKey: process.env.OPENAI_API_KEY,
     localUrl: process.env.VOICE_LOCAL_URL || 'http://voz:8000/v1',
+    // Quién genera la voz para hablar: "edge" (gratis, voces de Microsoft, por defecto), "openai", "local" o "none"
+    ttsProvider:
+      process.env.TTS_PROVIDER || (['openai', 'local'].includes(process.env.VOICE_PROVIDER) ? process.env.VOICE_PROVIDER : 'edge'),
     sttModel: process.env.STT_MODEL || (process.env.VOICE_PROVIDER === 'local' ? 'Systran/faster-whisper-small' : 'gpt-4o-mini-transcribe'),
     ttsModel: process.env.TTS_MODEL || 'gpt-4o-mini-tts',
     ttsVoice: process.env.TTS_VOICE || 'alloy',

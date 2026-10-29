@@ -1,13 +1,26 @@
 import { config } from '../config.js';
+import { getSettings } from '../models/Settings.js';
+import { edgeSynthesize } from './edgeTts.js';
 
-export function voiceEnabled() {
+/** ¿Puede entender audio (voz → texto)? */
+export function sttEnabled() {
   if (config.voice.provider === 'local') return true;
   return config.voice.provider === 'openai' && Boolean(config.voice.openaiApiKey);
 }
+export const voiceEnabled = sttEnabled;
+
+/** ¿Puede hablar (texto → voz)? Por defecto sí, con las voces gratis de Edge. */
+export function ttsEnabled() {
+  const p = config.voice.ttsProvider;
+  if (p === 'edge' || p === 'local') return true;
+  return p === 'openai' && Boolean(config.voice.openaiApiKey);
+}
+
+// Tono de la voz según el ajuste del panel
+const TONOS = { normal: { pitch: '+0%', rate: '+0%' }, agudo: { pitch: '+18%', rate: '+5%' }, grave: { pitch: '-20%', rate: '-8%' } };
 
 // OpenAI o el servicio local (misma API, sin clave)
-function endpoint(path) {
-  const local = config.voice.provider === 'local';
+function endpoint(path, local = config.voice.provider === 'local') {
   return {
     url: `${local ? config.voice.localUrl : 'https://api.openai.com/v1'}${path}`,
     headers: local ? {} : { Authorization: `Bearer ${config.voice.openaiApiKey}` },
@@ -106,9 +119,13 @@ export function forSpeech(text) {
 
 /** Texto → audio PCM 24 kHz, 16 bits, mono (listo para mandar al MAX98357A por I2S). */
 export async function synthesize(text) {
-  if (!voiceEnabled()) throw new Error('Voz desactivada: configurá VOICE_PROVIDER (local u openai)');
-  const local = config.voice.provider === 'local';
-  const { url, headers } = endpoint('/audio/speech');
+  if (!ttsEnabled()) throw new Error('Voz desactivada: configurá TTS_PROVIDER');
+  if (config.voice.ttsProvider === 'edge') {
+    const s = await getSettings();
+    return edgeSynthesize(forSpeech(text), { voice: s.voz, ...(TONOS[s.vozTono] || TONOS.normal) });
+  }
+  const local = config.voice.ttsProvider === 'local';
+  const { url, headers } = endpoint('/audio/speech', local);
   const res = await fetch(url, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },

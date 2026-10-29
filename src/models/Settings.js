@@ -15,6 +15,8 @@ export const DEFAULT_SETTINGS = {
   meetingNoticeMin: 10, // cuántos minutos antes avisa
   deployReactions: true,
   futbol: true, // hincha de Newell's: avisa partidos, festeja goles
+  voz: 'es-AR-TomasNeural', // voz de Edge (ver services/edgeTts.js)
+  vozTono: 'normal', // normal | agudo | grave
   frasesCadaHoras: 3, // cada cuánto tira una frase leprosa (0 = nunca)
   frasesLeprosas: [], // frases propias (si está vacío usa las de fábrica)
   frameEnabled: false, // portarretrato: intercala la cara con fotos
@@ -41,6 +43,8 @@ const settingsSchema = new mongoose.Schema(
     meetingNoticeMin: { type: Number, min: 1, max: 120 },
     deployReactions: Boolean,
     futbol: Boolean,
+    voz: String,
+    vozTono: String,
     frasesCadaHoras: Number,
     frasesLeprosas: [{ type: String, maxlength: 300 }],
     frameEnabled: Boolean,
@@ -101,6 +105,8 @@ export function sanitizeSettings(body = {}) {
   set('meetingNoticeMin', int(body.meetingNoticeMin, 1, 120));
   set('deployReactions', typeof body.deployReactions === 'boolean' ? body.deployReactions : undefined);
   set('futbol', typeof body.futbol === 'boolean' ? body.futbol : undefined);
+  set('voz', typeof body.voz === 'string' && /^[a-z]{2}-[A-Z]{2}-[A-Za-z]+Neural$/.test(body.voz) ? body.voz : undefined);
+  set('vozTono', ['normal', 'agudo', 'grave'].includes(body.vozTono) ? body.vozTono : undefined);
   set('frasesCadaHoras', int(body.frasesCadaHoras, 0, 24));
   if (body.frasesLeprosas !== undefined) {
     if (Array.isArray(body.frasesLeprosas)) {

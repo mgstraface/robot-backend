@@ -3,7 +3,7 @@ import { config } from '../config.js';
 import { isEmotion, MOTION_REACTIONS, TOUCH_REACTIONS } from '../emotions.js';
 import { appearanceOf, getPersonality } from '../models/Personality.js';
 import { chat } from '../services/ai.js';
-import { synthesize, transcribe, voiceEnabled } from '../services/voice.js';
+import { sttEnabled, synthesize, transcribe, ttsEnabled } from '../services/voice.js';
 
 /*
  * Protocolo robot ⇄ servidor (ver README para el detalle):
@@ -79,7 +79,7 @@ async function streamAudio(ws, pcm) {
 export async function speak(deviceId, text, emotion = 'neutral', gesture = null) {
   const list = targets(deviceId);
   if (list.length === 0) return 0;
-  const audio = voiceEnabled() ? await synthesize(text) : null;
+  const audio = ttsEnabled() ? await synthesize(text).catch(() => null) : null;
   for (const [id, d] of list) {
     send(d.ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) });
     logEvent(id, 'reply', { text, emotion, from: 'panel' });
@@ -96,7 +96,7 @@ async function respond(deviceId, device, userText, source) {
     const { text, emotion, gesture } = await chat({ deviceId, text: userText, source });
     send(ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) });
     logEvent(deviceId, 'reply', { text, emotion, gesture });
-    if (voiceEnabled()) await streamAudio(ws, await synthesize(text));
+    if (ttsEnabled()) await synthesize(text).then((a) => streamAudio(ws, a)).catch((e) => console.error('[voz]', e.message));
   } finally {
     device.busy = false;
   }
@@ -208,7 +208,7 @@ export function attachRobotSocket(server) {
     const device = { ws, connectedAt: new Date().toISOString(), lastSeen: new Date().toISOString(), busy: false, audio: [], audioBytes: 0, listening: false };
     devices.set(deviceId, device);
     logEvent(deviceId, 'connected');
-    send(ws, { type: 'welcome', deviceId, voice: voiceEnabled(), inputSampleRate: config.voice.inputSampleRate });
+    send(ws, { type: 'welcome', deviceId, voice: ttsEnabled(), listen: sttEnabled(), inputSampleRate: config.voice.inputSampleRate });
     getPersonality()
       .then((p) => send(ws, { type: 'appearance', ...appearanceOf(p) }))
       .catch((err) => console.error('[robot] no se pudo mandar la apariencia:', err.message));
