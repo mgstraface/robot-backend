@@ -42,5 +42,19 @@ services:
       - backend
     restart: unless-stopped
 
+  # Voz gratis (opcional): Whisper para entender y Piper para hablar, con la misma API que OpenAI.
+  # Solo arranca si el .env tiene COMPOSE_PROFILES=voz (y VOICE_PROVIDER=local). Usa ~1–1,5 GB de RAM.
+  # Los modelos se bajan una vez y quedan en el volumen (ver README, "Voz gratis").
+  voz:
+    image: ghcr.io/speaches-ai/speaches:latest-cpu
+    container_name: ${STACK:-robot}-voz
+    profiles: ["voz"]
+    environment:
+      WHISPER__INFERENCE_DEVICE: cpu
+    volumes:
+      - robot-voz-models:/home/ubuntu/.cache/huggingface/hub
+    restart: unless-stopped
+
 volumes:
   robot-mongo-data:
+  robot-voz-models:

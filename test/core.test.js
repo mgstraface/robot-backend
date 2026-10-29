@@ -58,3 +58,15 @@ test('parseReply separa emoción, gesto y texto', async () => {
   assert.deepEqual(parseReply('[feliz] [bailar] Hola'), { emotion: 'feliz', gesture: null, text: 'Hola' });
   assert.deepEqual(parseReply('[feliz] Hola'), { emotion: 'feliz', gesture: null, text: 'Hola' });
 });
+
+test('voz local: WAV → PCM y cambio de frecuencia', async () => {
+  const { pcmToWav, wavToPcm, resample } = await import('../src/services/voice.js');
+  const pcm = Buffer.alloc(2205 * 2);
+  for (let i = 0; i < 2205; i++) pcm.writeInt16LE(i, i * 2);
+  const back = wavToPcm(pcmToWav(pcm, 22050));
+  assert.equal(back.sampleRate, 22050);
+  assert.ok(back.pcm.equals(pcm));
+  const up = resample(pcm, 22050, 24000);
+  assert.equal(up.length, 2400 * 2);
+  assert.equal(up.readInt16LE(0), 0);
+});

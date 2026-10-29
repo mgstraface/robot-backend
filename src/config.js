@@ -32,10 +32,12 @@ export const config = {
   },
 
   voice: {
-    // "openai" usa su API para transcribir (STT) y generar voz (TTS). "none" = el robot recibe solo texto.
+    // "openai" usa su API (pago). "local" usa el servicio "voz" del VPS (gratis: Whisper + Piper).
+    // "none" = el robot recibe solo texto.
     provider: process.env.VOICE_PROVIDER || 'none',
     openaiApiKey: process.env.OPENAI_API_KEY,
-    sttModel: process.env.STT_MODEL || 'gpt-4o-mini-transcribe',
+    localUrl: process.env.VOICE_LOCAL_URL || 'http://voz:8000/v1',
+    sttModel: process.env.STT_MODEL || (process.env.VOICE_PROVIDER === 'local' ? 'Systran/faster-whisper-small' : 'gpt-4o-mini-transcribe'),
     ttsModel: process.env.TTS_MODEL || 'gpt-4o-mini-tts',
     ttsVoice: process.env.TTS_VOICE || 'alloy',
     language: process.env.VOICE_LANGUAGE || 'es',

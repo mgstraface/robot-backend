@@ -128,3 +128,24 @@ Secrets necesarios en **los dos repos** (Settings → Secrets and variables → 
 
 - Corre como **una sola instancia**: los robots conectados viven en memoria.
 - La latencia total (STT + IA + TTS) depende de dónde esté el VPS. Para disimularla, el servidor manda `pensando` apenas recibe el audio.
+
+## Voz gratis (Whisper + Piper en el VPS)
+
+En lugar de pagar la voz de OpenAI, el VPS puede entender y hablar solo con el servicio `voz`
+([speaches](https://github.com/speaches-ai/speaches): misma API que OpenAI). Usa ~1–1,5 GB de RAM.
+
+1. En el `.env` del entorno:
+   ```
+   VOICE_PROVIDER=local
+   COMPOSE_PROFILES=voz
+   ```
+2. Redeploy (`bash scripts/deploy-vps.sh` o push). Queda corriendo el contenedor `robot-voz`.
+3. Bajar los modelos una sola vez (quedan guardados en el volumen):
+   ```bash
+   # ver las voces en español disponibles
+   docker exec robot-voz curl -s 'localhost:8000/v1/registry?task=text-to-speech' | grep -o '"id":"[^"]*es_[^"]*"'
+   # bajar el reconocedor y la voz elegida
+   docker exec robot-voz curl -s -X POST localhost:8000/v1/models/Systran/faster-whisper-small
+   docker exec robot-voz curl -s -X POST localhost:8000/v1/models/<id-de-la-voz>
+   ```
+4. Poner en el `.env` `TTS_MODEL=<id-de-la-voz>` (y `TTS_VOICE` con el nombre de la voz) y reiniciar el backend.
