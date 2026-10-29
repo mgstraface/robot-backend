@@ -15,4 +15,4 @@ jobs:
           node-version: 22
       - run: npm install ws@8 --no-save
       - run: |
-          node -e "import('./src/services/edgeTts.js').then(m => m.edgeSynthesize('Hola Mati, soy Robi').then(b => console.log('OK bytes', b.length)).catch(e => { console.log('ERROR', e.message); process.exit(1); }))"
+          node -e "import('./src/services/edgeTts.js').then(m => m.edgeSynthesize('Hola Mati, soy Robi').then(b => console.log('::notice::OK bytes ' + b.length)).catch(e => { console.log('::error::' + e.message); process.exit(1); }))"
