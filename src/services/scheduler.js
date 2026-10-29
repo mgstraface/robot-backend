@@ -1,6 +1,7 @@
 // Reloj de las rutinas: una vez por minuto decide si hay que saludar, avisar una reunión,
 // recordar el agua, cerrar el bloque de foco o pegar un susto.
 import { frasesTick, futbolTick } from './futbol.js';
+import { isHalloween } from './extras.js';
 import { getSettings } from '../models/Settings.js';
 import { DAY, isSleepHour, localParts, startOfLocalDay } from '../time.js';
 import { upcomingEvents } from './calendar.js';
@@ -89,11 +90,13 @@ export async function tick(now = Date.now()) {
   // Sustos del día
   if (state.scaresDay !== dayKey) {
     state.scaresDay = dayKey;
-    state.scareTimes = planScares(s.scaresPerDay, startOfLocalDay(now, s.timezone), s.sleepFrom, s.sleepTo).filter((t) => t > now);
+    // En Halloween, sustos seguidos aunque no estén activados
+    const n = isHalloween(now, s.timezone) ? Math.max(s.scaresPerDay, 6) : s.scaresPerDay;
+    state.scareTimes = planScares(n, startOfLocalDay(now, s.timezone), s.sleepFrom, s.sleepTo).filter((t) => t > now);
   }
   if (state.scareTimes.length && state.scareTimes[0] <= now) {
     state.scareTimes.shift();
-    if (!getFocus(now)) await safely('susto', scare);
+    if (!getFocus(now)) await safely('susto', () => scare({ force: isHalloween(now, s.timezone) }));
   }
 }
 

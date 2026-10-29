@@ -89,3 +89,13 @@ test('noticias de Newell\'s: comando y lectura del RSS', async () => {
   const { forSpeech } = await import('../src/services/voice.js');
   assert.equal(forSpeech("¡GOOOOOL DE NEWELL'S! Je, je, je."), "¡goool de newell's! jejeje.");
 });
+
+test('dólar y Halloween', async () => {
+  assert.deepEqual(parseCommand('Robi, ¿cómo está el dólar?'), { type: 'dolar' });
+  assert.deepEqual(parseCommand('a cuanto esta el blue'), { type: 'dolar' });
+  const { describeDolar, isHalloween } = await import('../src/services/extras.js');
+  assert.match(describeDolar({ blue: { compra: 1200, venta: 1230 }, oficial: { venta: 1050 } }), /blue está a 1\.230 pesos/);
+  assert.equal(isHalloween(Date.UTC(2026, 9, 31, 15, 0)), true);
+  assert.equal(isHalloween(Date.UTC(2026, 10, 1, 2, 0)), true); // 23 h del 31 en Argentina
+  assert.equal(isHalloween(Date.UTC(2026, 9, 30, 15, 0)), false);
+});

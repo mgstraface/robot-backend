@@ -5,6 +5,7 @@ import { formatTime, localParts, zonedToUtc, DAY } from '../time.js';
 import { startFocus } from './focus.js';
 import { fraseLeprosa, matchAnswer } from './futbol.js';
 import { newellsNews } from './noticias.js';
+import { describeDolar, getDolar } from './extras.js';
 import { pick } from './phrases.js';
 import { addReminder, cancelReminders, pendingReminders } from './reminders.js';
 import { describeWeather, getWeather } from './weather.js';
@@ -72,6 +73,7 @@ export function parseCommand(text) {
   if (/(^|\b(me decis|decime|sabes) )que (dia|fecha) es( hoy)?$/.test(t)) return { type: 'fecha' };
   if (t.length < 60 && /\b(clima|temperatura|llueve|llover|lluvia|hace frio|hace calor|como esta el dia)\b/.test(t)) return { type: 'clima' };
   if (/\b(conta|contame|deci|decime|tira|tirame)( un| otro)? chiste\b/.test(t)) return { type: 'chiste' };
+  if (t.length < 60 && /\b(dolar|dolares|blue|cotizacion)\b/.test(t)) return { type: 'dolar' };
   if (/\b(noticia|noticias|novedad|novedades|que se dice|que hay de nuevo)\b/.test(t) && /\b(newell|newells|nob|lepra)\b/.test(t)) return { type: 'noticia' };
   if (/\b(canta|cantame|cantate|tira|tirame|deci|decime)\b.*\b(leprosa|lepra|newell|newells|cancion|cantito)\b/.test(t)) return { type: 'leprosa' };
   if (/\b(newell|newells|nob|la lepra|lepra)\b/.test(t)) {
@@ -147,6 +149,12 @@ export async function runCommand(text, now = Date.now()) {
         return await matchAnswer(cmd.kind, tz, now);
       } catch {
         return { text: 'No pude ver los partidos ahora. Probá en un rato.', emotion: 'triste' };
+      }
+    case 'dolar':
+      try {
+        return { text: describeDolar(await getDolar(now)), emotion: 'curioso' };
+      } catch {
+        return { text: 'No pude ver el dólar ahora. Probá en un rato.', emotion: 'triste' };
       }
     case 'noticia':
       try {

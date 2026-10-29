@@ -5,6 +5,7 @@ import { Message } from '../models/Message.js';
 import { getPersonality } from '../models/Personality.js';
 import { getSettings } from '../models/Settings.js';
 import { runCommand } from './commands.js';
+import { isHalloween } from './extras.js';
 import { getFocus } from './focus.js';
 import { formatTime } from '../time.js';
 
@@ -33,6 +34,11 @@ export function buildSystemPrompt(personality, now = new Date(), { focus = null,
     timeStyle: 'short',
   });
   let prompt = `${personality.systemPrompt.trim()}\n\nFecha y hora actual: ${fecha}.\n${EMOTION_INSTRUCTIONS}`;
+  if (isHalloween(now.getTime())) {
+    prompt +=
+      '\n\nHoy es Halloween: estás en modo terror todo el día. Respondé con onda tenebrosa y divertida, ' +
+      'alguna risa macabra (jejeje) y referencias a fantasmas, calaveras y películas de terror, sin dejar de ayudar.';
+  }
   if (futbol) {
     prompt +=
       "\n\nSos hincha fanático de Newell's Old Boys (la Lepra, de Rosario), igual que tu dueño: conocés su historia " +

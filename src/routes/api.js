@@ -9,6 +9,7 @@ import { getSettings, publicSettings, sanitizeSettings, updateSettings } from '.
 import { chat } from '../services/ai.js';
 import { announce, feedAfter } from '../services/announce.js';
 import { pick } from '../services/phrases.js';
+import { isHalloween } from '../services/extras.js';
 import { fraseLeprosa } from '../services/futbol.js';
 import { clearCalendarCache, upcomingEvents } from '../services/calendar.js';
 import { getFocus, startFocus, stopFocus } from '../services/focus.js';
@@ -100,8 +101,8 @@ router.delete(
   })
 );
 
-router.get('/config', (req, res) => {
-  res.json({ model: config.ai.model, voice: ttsEnabled(), voces: VOCES, emotions: EMOTIONS, gestures: GESTURES, env: config.appEnv });
+router.get('/config', async (req, res) => {
+  res.json({ model: config.ai.model, voice: ttsEnabled(), voces: VOCES, halloween: isHalloween(Date.now(), (await getSettings()).timezone), emotions: EMOTIONS, gestures: GESTURES, env: config.appEnv });
 });
 
 router.get(
