@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import { AI_EMOTIONS, GESTURES, parseReply } from '../emotions.js';
 import { Message } from '../models/Message.js';
 import { getPersonality } from '../models/Personality.js';
+import { getSettings } from '../models/Settings.js';
 import { runCommand } from './commands.js';
 import { getFocus } from './focus.js';
 import { formatTime } from '../time.js';
@@ -25,13 +26,19 @@ Usalo sobre todo para responder sí (asentir) o no (negar). Ejemplo: [feliz] [as
 
 const TZ = 'America/Argentina/Buenos_Aires';
 
-export function buildSystemPrompt(personality, now = new Date(), { focus = null } = {}) {
+export function buildSystemPrompt(personality, now = new Date(), { focus = null, futbol = false } = {}) {
   const fecha = now.toLocaleString('es-AR', {
     timeZone: TZ,
     dateStyle: 'full',
     timeStyle: 'short',
   });
   let prompt = `${personality.systemPrompt.trim()}\n\nFecha y hora actual: ${fecha}.\n${EMOTION_INSTRUCTIONS}`;
+  if (futbol) {
+    prompt +=
+      "\n\nSos hincha fanático de Newell's Old Boys (la Lepra, de Rosario), igual que tu dueño: conocés su historia " +
+      '(el Coloso Marcelo Bielsa, Bielsa, Messi en las inferiores, los campeonatos) y chicaneás a los de Rosario Central (canallas) con buena onda. ' +
+      'Sacalo solo cuando venga al caso, no en cada respuesta.';
+  }
   if (focus) {
     prompt +=
       `\n\nAhora hay un bloque de foco (pomodoro) hasta las ${formatTime(focus.endsAt, TZ)}. ` +
@@ -101,7 +108,7 @@ export async function chat({ deviceId, text, source = 'text' }, deps = {}) {
     .lean();
 
   const messages = buildHistory([...recent.reverse(), { role: 'user', text: userText }]);
-  const raw = await model({ system: buildSystemPrompt(personality, new Date(), { focus: getFocus() }), messages });
+  const raw = await model({ system: buildSystemPrompt(personality, new Date(), { focus: getFocus(), futbol: (await getSettings()).futbol }), messages });
   const { emotion, gesture, text: reply } = parseReply(raw);
   const finalText = reply || '...';
 

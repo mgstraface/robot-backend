@@ -23,9 +23,10 @@ export function feedAfter(after) {
  * Hace que el robot (y el panel) digan o hagan algo.
  * @param {{kind:string, text?:string, emotion?:string, actions?:string[], weather?:string}} a
  */
-export async function announce({ kind, text = '', emotion = 'neutral', actions = [], weather }) {
-  const entry = pushFeed({ kind, text, emotion, actions, weather });
+export async function announce({ kind, text = '', emotion = 'neutral', actions = [], weather, gesture }) {
+  const entry = pushFeed({ kind, text, emotion, actions, weather, gesture });
   for (const action of actions) broadcast({ type: 'action', action, ...(weather ? { weather } : {}) });
+  if (gesture) broadcast({ type: 'gesture', gesture });
   try {
     if (text) await speak(undefined, text, emotion);
     else if (emotion && emotion !== 'neutral') setEmotion(undefined, emotion);

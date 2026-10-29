@@ -38,3 +38,30 @@ test('nextAt: hoy si no pasó, mañana si ya pasó', () => {
   assert.equal(nextAt(10, 0, tz, now), Date.UTC(2026, 9, 29, 13, 0));
   assert.equal(nextAt(8, 0, tz, now), Date.UTC(2026, 9, 30, 11, 0));
 });
+
+test('fútbol: comandos y lectura de ESPN', async () => {
+  assert.deepEqual(parseCommand('¿Cuándo juega Newell\'s?'), { type: 'futbol', kind: 'cuando' });
+  assert.deepEqual(parseCommand('cómo salió la lepra'), { type: 'futbol', kind: 'resultado' });
+  const { parseEvent, diffMatch } = await import('../src/services/futbol.js');
+  const ev = {
+    id: '1',
+    date: '2026-11-01T23:00Z',
+    competitions: [
+      {
+        status: { type: { state: 'in', shortDetail: "55'" } },
+        competitors: [
+          { homeAway: 'home', score: '2', team: { id: '14', displayName: "Newell's Old Boys", shortDisplayName: "Newell's" } },
+          { homeAway: 'away', score: { value: 1 }, team: { id: '9', displayName: 'Rosario Central', shortDisplayName: 'Central' } },
+        ],
+      },
+    ],
+  };
+  const m = parseEvent(ev, '14');
+  assert.equal(m.ours, true);
+  assert.equal(m.us.score, 2);
+  assert.equal(m.rival.name, 'Central');
+  assert.equal(m.us.home, true);
+  assert.deepEqual(diffMatch({ us: 1, rival: 1 }, m), ['gol']);
+  assert.deepEqual(diffMatch({ us: 2, rival: 0 }, m), ['golRival']);
+  assert.deepEqual(diffMatch(undefined, m), []);
+});

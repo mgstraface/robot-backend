@@ -3,6 +3,7 @@
 import { getSettings } from '../models/Settings.js';
 import { formatTime, localParts, zonedToUtc, DAY } from '../time.js';
 import { startFocus } from './focus.js';
+import { matchAnswer } from './futbol.js';
 import { pick } from './phrases.js';
 import { addReminder, cancelReminders, pendingReminders } from './reminders.js';
 import { describeWeather, getWeather } from './weather.js';
@@ -70,6 +71,10 @@ export function parseCommand(text) {
   if (/(^|\b(me decis|decime|sabes) )que (dia|fecha) es( hoy)?$/.test(t)) return { type: 'fecha' };
   if (t.length < 60 && /\b(clima|temperatura|llueve|llover|lluvia|hace frio|hace calor|como esta el dia)\b/.test(t)) return { type: 'clima' };
   if (/\b(conta|contame|deci|decime|tira|tirame)( un| otro)? chiste\b/.test(t)) return { type: 'chiste' };
+  if (/\b(newell|newells|nob|la lepra|lepra)\b/.test(t)) {
+    if (/\b(como (salio|le fue|quedo|va|esta)|resultado|cuanto (salio|va|esta)|gano|perdio|empato)\b/.test(t)) return { type: 'futbol', kind: 'resultado' };
+    if (/\b(cuando|a que hora|contra quien|proximo partido|juega)\b/.test(t)) return { type: 'futbol', kind: 'cuando' };
+  }
   if (/\b(modo foco|arranca(r)? (el )?foco|pomodoro)\b/.test(t)) return { type: 'foco' };
   return null;
 }
@@ -134,6 +139,12 @@ export async function runCommand(text, now = Date.now()) {
       const items = list.slice(0, 5).map((r) => `${r.text || r.kind} a las ${formatTime(r.at, tz)}`);
       return { text: pick('pendientes', { lista: items.join(', ') }), emotion: 'curioso' };
     }
+    case 'futbol':
+      try {
+        return await matchAnswer(cmd.kind, tz, now);
+      } catch {
+        return { text: 'No pude ver los partidos ahora. Probá en un rato.', emotion: 'triste' };
+      }
     case 'chiste':
       return { text: pick('chiste'), emotion: 'feliz' };
     case 'foco':

@@ -19,7 +19,7 @@ export const EMOTIONS = [
 
 // Acciones que el servidor puede pedirle al robot (además de las de su propia vida).
 // "clima" va acompañada de la categoría del clima (despejado, lluvia, tormenta…).
-export const ROBOT_ACTIONS = ['apagon', 'risa', 'lagrima', 'colmillos', 'tercerOjo', 'clima'];
+export const ROBOT_ACTIONS = ['apagon', 'risa', 'lagrima', 'colmillos', 'tercerOjo', 'clima', 'gol', 'bandera'];
 
 // Gestos de cabeza (cuello de 2 servos: giro horizontal y vertical). El robot y el panel los animan.
 export const GESTURES = ['asentir', 'negar', 'mirarArriba', 'mirarAbajo', 'mirarIzquierda', 'mirarDerecha', 'ladear'];

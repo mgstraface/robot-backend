@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS = {
   calendarUrl: '', // dirección secreta iCal (.ics)
   meetingNoticeMin: 10, // cuántos minutos antes avisa
   deployReactions: true,
+  futbol: true, // hincha de Newell's: avisa partidos, festeja goles
   frameEnabled: false, // portarretrato: intercala la cara con fotos
   frameFaceSec: 60, // cuánto muestra la cara entre foto y foto
   framePhotoSec: 10, // cuánto muestra cada foto
@@ -37,6 +38,7 @@ const settingsSchema = new mongoose.Schema(
     calendarUrl: { type: String, maxlength: 2000 },
     meetingNoticeMin: { type: Number, min: 1, max: 120 },
     deployReactions: Boolean,
+    futbol: Boolean,
     frameEnabled: Boolean,
     frameFaceSec: { type: Number, min: 10, max: 3600 },
     framePhotoSec: { type: Number, min: 3, max: 120 },
@@ -94,6 +96,7 @@ export function sanitizeSettings(body = {}) {
   set('waterEveryMin', int(body.waterEveryMin, 0, 600));
   set('meetingNoticeMin', int(body.meetingNoticeMin, 1, 120));
   set('deployReactions', typeof body.deployReactions === 'boolean' ? body.deployReactions : undefined);
+  set('futbol', typeof body.futbol === 'boolean' ? body.futbol : undefined);
   set('frameEnabled', typeof body.frameEnabled === 'boolean' ? body.frameEnabled : undefined);
   set('frameFaceSec', int(body.frameFaceSec, 10, 3600));
   set('framePhotoSec', int(body.framePhotoSec, 3, 120));

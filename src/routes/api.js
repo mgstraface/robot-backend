@@ -8,6 +8,7 @@ import { appearanceOf, FACE_STYLES, getPersonality, updatePersonality } from '..
 import { getSettings, publicSettings, sanitizeSettings, updateSettings } from '../models/Settings.js';
 import { chat } from '../services/ai.js';
 import { announce, feedAfter } from '../services/announce.js';
+import { pick } from '../services/phrases.js';
 import { clearCalendarCache, upcomingEvents } from '../services/calendar.js';
 import { getFocus, startFocus, stopFocus } from '../services/focus.js';
 import { deployReaction, finishFocus, remindMeeting, remindWater, runBriefing, scare } from '../services/routines.js';
@@ -301,6 +302,7 @@ const TRIES = {
   'deploy-falla': () => deployReaction({ status: 'failure', repo: 'robot', env: 'prod', force: true }),
   susto: () => scare({ force: true }),
   'foco-fin': () => finishFocus({ minutes: 25 }),
+  gol: () => announce({ kind: 'futbol', text: pick('futbolGol', { us: 1, rival: 0, contra: 'Central' }), emotion: 'riendo', actions: ['gol'], gesture: 'asentir' }),
 };
 
 router.post(

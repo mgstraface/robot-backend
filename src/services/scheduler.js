@@ -1,5 +1,6 @@
 // Reloj de las rutinas: una vez por minuto decide si hay que saludar, avisar una reunión,
 // recordar el agua, cerrar el bloque de foco o pegar un susto.
+import { futbolTick } from './futbol.js';
 import { getSettings } from '../models/Settings.js';
 import { DAY, isSleepHour, localParts, startOfLocalDay } from '../time.js';
 import { upcomingEvents } from './calendar.js';
@@ -52,6 +53,9 @@ export async function tick(now = Date.now()) {
   // Bloque de foco terminado
   const finished = takeFinishedFocus(now);
   if (finished) await safely('foco', () => finishFocus(finished));
+
+  // Newell's: corre aunque esté en horario de dormir (un gol a la noche lo despierta)
+  if (s.futbol) await safely('futbol', () => futbolTick({ now, tz: s.timezone, sleeping }));
 
   if (sleeping) return;
 
