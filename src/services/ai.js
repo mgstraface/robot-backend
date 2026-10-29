@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config.js';
-import { AI_EMOTIONS, parseEmotion } from '../emotions.js';
+import { AI_EMOTIONS, GESTURES, parseReply } from '../emotions.js';
 import { Message } from '../models/Message.js';
 import { getPersonality } from '../models/Personality.js';
 import { getFocus } from './focus.js';
@@ -18,7 +18,9 @@ function getClient() {
 const EMOTION_INSTRUCTIONS = `
 Formato obligatorio: empezá SIEMPRE tu respuesta con tu emoción entre corchetes y después el texto.
 Emociones posibles: ${AI_EMOTIONS.join(', ')}.
-Ejemplo: [feliz] ¡Qué bueno verte de nuevo!`;
+Ejemplo: [feliz] ¡Qué bueno verte de nuevo!
+Podés mover la cabeza: si tiene sentido, agregá después de la emoción un gesto entre corchetes (${GESTURES.join(', ')}).
+Usalo sobre todo para responder sí (asentir) o no (negar). Ejemplo: [feliz] [asentir] ¡Obvio que sí!`;
 
 const TZ = 'America/Argentina/Buenos_Aires';
 
@@ -89,7 +91,7 @@ export async function chat({ deviceId, text, source = 'text' }, deps = {}) {
 
   const messages = buildHistory([...recent.reverse(), { role: 'user', text: userText }]);
   const raw = await model({ system: buildSystemPrompt(personality, new Date(), { focus: getFocus() }), messages });
-  const { emotion, text: reply } = parseEmotion(raw);
+  const { emotion, gesture, text: reply } = parseReply(raw);
   const finalText = reply || '...';
 
   await Message.insertMany([
@@ -97,7 +99,7 @@ export async function chat({ deviceId, text, source = 'text' }, deps = {}) {
     { deviceId, role: 'assistant', text: finalText, emotion, source },
   ]);
 
-  return { text: finalText, emotion };
+  return { text: finalText, emotion, gesture };
 }
 
 /**
@@ -116,8 +118,8 @@ export async function generate(instruction, deps = {}) {
       },
     ],
   });
-  const { emotion, text } = parseEmotion(raw);
+  const { emotion, gesture, text } = parseReply(raw);
   const finalText = text || '...';
   await Message.create({ deviceId: 'avisos', role: 'assistant', text: finalText, emotion, source: 'text' });
-  return { text: finalText, emotion };
+  return { text: finalText, emotion, gesture };
 }

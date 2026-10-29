@@ -50,3 +50,11 @@ test('pcmToWav arma un header WAV válido', () => {
   assert.equal(wav.readUInt32LE(24), 16000);
   assert.equal(wav.readUInt32LE(40), 3200);
 });
+
+test('parseReply separa emoción, gesto y texto', async () => {
+  const { parseReply } = await import('../src/emotions.js');
+  assert.deepEqual(parseReply('[feliz] [asentir] ¡Sí!'), { emotion: 'feliz', gesture: 'asentir', text: '¡Sí!' });
+  assert.deepEqual(parseReply('[triste] [Negar] No.'), { emotion: 'triste', gesture: 'negar', text: 'No.' });
+  assert.deepEqual(parseReply('[feliz] [bailar] Hola'), { emotion: 'feliz', gesture: null, text: 'Hola' });
+  assert.deepEqual(parseReply('[feliz] Hola'), { emotion: 'feliz', gesture: null, text: 'Hola' });
+});

@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import express, { Router } from 'express';
 import { config } from '../config.js';
-import { EMOTIONS, isEmotion, ROBOT_ACTIONS } from '../emotions.js';
+import { EMOTIONS, GESTURES, isEmotion, ROBOT_ACTIONS } from '../emotions.js';
 import { Message } from '../models/Message.js';
 import { isJpeg, MAX_PHOTO_BYTES, MAX_PHOTOS, Photo } from '../models/Photo.js';
 import { appearanceOf, FACE_STYLES, getPersonality, updatePersonality } from '../models/Personality.js';
@@ -98,7 +98,7 @@ router.delete(
 );
 
 router.get('/config', (req, res) => {
-  res.json({ model: config.ai.model, voice: voiceEnabled(), emotions: EMOTIONS, env: config.appEnv });
+  res.json({ model: config.ai.model, voice: voiceEnabled(), emotions: EMOTIONS, gestures: GESTURES, env: config.appEnv });
 });
 
 router.get(
@@ -186,7 +186,7 @@ router.post(
     if (!String(text || '').trim()) return res.status(400).json({ error: 'Falta el texto' });
     const reply = await chat({ deviceId: String(deviceId), text, source: 'panel' });
     let sentTo = 0;
-    if (speakOn) sentTo = await speak(String(speakOn), reply.text, reply.emotion);
+    if (speakOn) sentTo = await speak(String(speakOn), reply.text, reply.emotion, reply.gesture);
     res.json({ ...reply, sentTo });
   })
 );
@@ -272,6 +272,13 @@ router.post('/focus', (req, res) => {
 router.delete('/focus', (req, res) => {
   stopFocus();
   res.json({ focus: null });
+});
+
+// Mover la cabeza del robot (asentir, negar, mirar…)
+router.post('/gesture', (req, res) => {
+  const { gesture } = req.body || {};
+  if (!GESTURES.includes(gesture)) return res.status(400).json({ error: 'Gesto inválido', gestures: GESTURES });
+  res.json({ ok: true, sentTo: broadcast({ type: 'gesture', gesture }) });
 });
 
 // Probar una acción en el robot y el panel (ej. el susto)

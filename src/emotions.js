@@ -17,6 +17,9 @@ export const EMOTIONS = [
 // "clima" va acompañada de la categoría del clima (despejado, lluvia, tormenta…).
 export const ROBOT_ACTIONS = ['apagon', 'risa', 'lagrima', 'colmillos', 'tercerOjo', 'clima'];
 
+// Gestos de cabeza (cuello de 2 servos: giro horizontal y vertical). El robot y el panel los animan.
+export const GESTURES = ['asentir', 'negar', 'mirarArriba', 'mirarAbajo', 'mirarIzquierda', 'mirarDerecha', 'ladear'];
+
 // Reacciones al sensor de movimiento (IMU) del robot.
 export const MOTION_REACTIONS = {
   sacudir: 'mareado',
@@ -37,6 +40,19 @@ export const TOUCH_REACTIONS = {
   panza: 'amor',
   espalda: 'sorprendido',
 };
+
+/**
+ * La IA responde empezando con la emoción entre corchetes y, opcional, un gesto de cabeza:
+ * "[feliz] [asentir] ¡Sí, obvio!". Devuelve { emotion, gesture, text }.
+ */
+export function parseReply(raw) {
+  const { emotion, text } = parseEmotion(raw);
+  const match = text.match(/^\[([a-zA-Záéíóúñ]+)\]\s*/);
+  if (!match) return { emotion, gesture: null, text };
+  const g = GESTURES.find((x) => x.toLowerCase() === match[1].toLowerCase());
+  // si el tag no es un gesto válido igual lo sacamos del texto: no tiene que leerse en voz alta
+  return { emotion, gesture: g || null, text: text.slice(match[0].length).trim() };
+}
 
 /**
  * La IA responde empezando con la emoción entre corchetes: "[feliz] ¡Hola Mati!".

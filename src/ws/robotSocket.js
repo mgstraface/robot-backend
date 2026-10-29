@@ -9,7 +9,7 @@ import { synthesize, transcribe, voiceEnabled } from '../services/voice.js';
  * Protocolo robot ⇄ servidor (ver README para el detalle):
  *   Robot → servidor (JSON): hello, listen_start, listen_end, text, touch, motion, ping
  *   Robot → servidor (binario): audio PCM 16 kHz / 16 bits / mono entre listen_start y listen_end
- *   Servidor → robot (JSON): welcome, appearance, emotion, action, transcript, reply, audio_start, audio_end, error, pong
+ *   Servidor → robot (JSON): welcome, appearance, emotion, action, gesture, transcript, reply, audio_start, audio_end, error, pong
  *   Servidor → robot (binario): audio PCM 24 kHz / 16 bits / mono entre audio_start y audio_end
  */
 
@@ -76,12 +76,12 @@ async function streamAudio(ws, pcm) {
 }
 
 /** Le hace decir un texto al robot, con emoción y (si hay voz configurada) audio. */
-export async function speak(deviceId, text, emotion = 'neutral') {
+export async function speak(deviceId, text, emotion = 'neutral', gesture = null) {
   const list = targets(deviceId);
   if (list.length === 0) return 0;
   const audio = voiceEnabled() ? await synthesize(text) : null;
   for (const [id, d] of list) {
-    send(d.ws, { type: 'reply', text, emotion });
+    send(d.ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) });
     logEvent(id, 'reply', { text, emotion, from: 'panel' });
     if (audio) await streamAudio(d.ws, audio);
   }
@@ -93,9 +93,9 @@ async function respond(deviceId, device, userText, source) {
   device.busy = true;
   try {
     send(ws, { type: 'emotion', emotion: 'pensando' });
-    const { text, emotion } = await chat({ deviceId, text: userText, source });
-    send(ws, { type: 'reply', text, emotion });
-    logEvent(deviceId, 'reply', { text, emotion });
+    const { text, emotion, gesture } = await chat({ deviceId, text: userText, source });
+    send(ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) });
+    logEvent(deviceId, 'reply', { text, emotion, gesture });
     if (voiceEnabled()) await streamAudio(ws, await synthesize(text));
   } finally {
     device.busy = false;
