@@ -27,8 +27,13 @@ export const EMOTIONS = [
 // "clima" va acompañada de la categoría del clima (despejado, lluvia, tormenta…).
 export const ROBOT_ACTIONS = ['apagon', 'risa', 'lagrima', 'colmillos', 'tercerOjo', 'clima', 'gol', 'bandera'];
 
-// Gestos de cabeza (cuello de 2 servos: giro horizontal y vertical). El robot y el panel los animan.
-export const GESTURES = ['asentir', 'negar', 'mirarArriba', 'mirarAbajo', 'mirarIzquierda', 'mirarDerecha', 'ladear'];
+// Gestos: de cabeza (cuello de 2 servos) y de brazos (un servo por hombro). El firmware tiene la coreografía de cada uno.
+export const GESTURES = [
+  // cabeza (servos del cuello)
+  'asentir', 'negar', 'mirarArriba', 'mirarAbajo', 'mirarIzquierda', 'mirarDerecha', 'ladear',
+  // brazos (servos de los hombros)
+  'saludar', 'festejar', 'aplaudir', 'hombros', 'taparse', 'abrazo', 'bailar', 'senalar',
+];
 
 // Reacciones al sensor de movimiento (IMU) del robot.
 export const MOTION_REACTIONS = {

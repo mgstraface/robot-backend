@@ -56,6 +56,7 @@ export async function runBriefing(now = Date.now()) {
   });
   const reply = await generate(instruction);
   return announce({
+    gesture: 'saludar',
     kind: 'saludo',
     text: reply.text,
     emotion: reply.emotion,
@@ -69,7 +70,7 @@ export async function remindMeeting(ev, minutesLeft) {
   const reply = await generate(
     `Avisale a ${s.ownerName} que en ${minutesLeft} minutos (a las ${formatTime(ev.start, s.timezone)}) tiene "${ev.summary}". Una o dos oraciones.`
   );
-  return announce({ kind: 'reunion', text: reply.text, emotion: reply.emotion === 'neutral' ? 'sorprendido' : reply.emotion });
+  return announce({ kind: 'reunion', gesture: 'senalar', text: reply.text, emotion: reply.emotion === 'neutral' ? 'sorprendido' : reply.emotion });
 }
 
 export async function remindWater() {
@@ -83,7 +84,7 @@ export async function finishFocus(focus) {
   const reply = await generate(
     `Terminó el bloque de foco de ${focus.minutes} minutos de ${s.ownerName}. Felicitalo y decile que se tome un descanso de cinco minutos. Una o dos oraciones.`
   );
-  return announce({ kind: 'foco', text: reply.text, emotion: 'feliz' });
+  return announce({ kind: 'foco', text: reply.text, emotion: 'feliz', gesture: 'aplaudir' });
 }
 
 /** Susto: apagón y risa macabra. Solo tiene sentido con la cara en estilo terror. */

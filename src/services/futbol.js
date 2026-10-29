@@ -159,7 +159,7 @@ export async function futbolTick({ now = Date.now(), tz, sleeping = false }) {
   if (!match) return;
   const prev = state.live.get(match.id);
   for (const what of diffMatch(prev, match)) {
-    if (what === 'gol') await announce({ kind: 'futbol', text: pick('futbolGol', vars(match)), emotion: 'riendo', actions: ['gol'], gesture: 'asentir' });
+    if (what === 'gol') await announce({ kind: 'futbol', text: pick('futbolGol', vars(match)), emotion: 'riendo', actions: ['gol'], gesture: 'festejar' });
     else await announce({ kind: 'futbol', text: pick('futbolGolRival', vars(match)), emotion: 'enojado', gesture: 'negar' });
   }
   state.live.set(match.id, { us: match.us.score, rival: match.rival.score });
@@ -170,6 +170,7 @@ export async function futbolTick({ now = Date.now(), tz, sleeping = false }) {
       text: pick(`futbolFinal_${r}`, vars(match)),
       emotion: r === 'ganamos' ? 'riendo' : r === 'perdimos' ? 'triste' : 'neutral',
       actions: r === 'ganamos' ? ['bandera'] : [],
+      gesture: r === 'ganamos' ? 'festejar' : r === 'perdimos' ? 'negar' : 'hombros',
     });
   }
 }
@@ -191,5 +192,5 @@ export async function frasesTick({ now = Date.now(), s, sleeping }) {
   const every = s.frasesCadaHoras * 3600_000 * (0.75 + Math.random() * 0.5);
   if (now - lastFraseAt < every) return;
   lastFraseAt = now;
-  await announce({ kind: 'futbol', text: fraseLeprosa(s), emotion: 'feliz', actions: Math.random() < 0.5 ? ['bandera'] : [] });
+  await announce({ kind: 'futbol', text: fraseLeprosa(s), emotion: 'feliz', actions: Math.random() < 0.5 ? ['bandera'] : [], gesture: 'bailar' });
 }

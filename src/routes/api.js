@@ -310,10 +310,10 @@ const TRIES = {
     announce({ kind: 'futbol', text: pick('futbolGolRival', { us: 1, rival: 1, contra: 'Central' }), emotion: 'enojado', gesture: 'negar' }),
   'derrota': () => announce({ kind: 'futbol', text: pick('futbolFinal_perdimos', { us: 0, rival: 1, contra: 'Central' }), emotion: 'triste', gesture: 'negar' }),
   'victoria': () =>
-    announce({ kind: 'futbol', text: pick('futbolFinal_ganamos', { us: 2, rival: 0, contra: 'Central' }), emotion: 'riendo', actions: ['bandera'], gesture: 'asentir' }),
+    announce({ kind: 'futbol', text: pick('futbolFinal_ganamos', { us: 2, rival: 0, contra: 'Central' }), emotion: 'riendo', actions: ['bandera'], gesture: 'festejar' }),
   'central-perdio': () => announce({ kind: 'futbol', text: pick('futbolCentralPerdio', { contra: 'Boca' }), emotion: 'picaro' }),
-  frase: async () => announce({ kind: 'futbol', text: fraseLeprosa(await getSettings()), emotion: 'feliz', actions: ['bandera'] }),
-  gol: () => announce({ kind: 'futbol', text: pick('futbolGol', { us: 1, rival: 0, contra: 'Central' }), emotion: 'riendo', actions: ['gol'], gesture: 'asentir' }),
+  frase: async () => announce({ kind: 'futbol', text: fraseLeprosa(await getSettings()), emotion: 'feliz', actions: ['bandera'], gesture: 'bailar' }),
+  gol: () => announce({ kind: 'futbol', text: pick('futbolGol', { us: 1, rival: 0, contra: 'Central' }), emotion: 'riendo', actions: ['gol'], gesture: 'festejar' }),
 };
 
 router.post(

@@ -18,7 +18,7 @@ async function fire(id) {
   const r = await Reminder.findOneAndUpdate({ _id: id, done: false }, { done: true }, { new: true });
   if (!r) return;
   const text = r.text ? pick('recordatorio', { que: r.text }) : pick(r.kind === 'alarma' ? 'alarma' : 'timer');
-  await announce({ kind: r.kind, text, emotion: 'sorprendido', actions: [] });
+  await announce({ kind: r.kind, text, emotion: 'sorprendido', actions: [], gesture: 'senalar' });
 }
 
 export async function addReminder({ at, kind, text }) {

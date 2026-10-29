@@ -23,7 +23,7 @@ Formato obligatorio: empezá SIEMPRE tu respuesta con tu emoción entre corchete
 Emociones posibles: ${AI_EMOTIONS.join(', ')}.
 Ejemplo: [feliz] ¡Qué bueno verte de nuevo!
 Podés mover la cabeza: si tiene sentido, agregá después de la emoción un gesto entre corchetes (${GESTURES.join(', ')}).
-Usalo sobre todo para responder sí (asentir) o no (negar). Ejemplo: [feliz] [asentir] ¡Obvio que sí!`;
+Usalo para responder sí (asentir) o no (negar), saludar, festejar, encogerte de hombros (hombros) cuando no sabés algo, o abrazo para algo cariñoso. Ejemplo: [feliz] [asentir] ¡Obvio que sí!`;
 
 const TZ = 'America/Argentina/Buenos_Aires';
 
