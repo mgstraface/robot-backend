@@ -1,0 +1,18 @@
+name: Probar voz de Edge
+
+# Prueba manual: genera una frase con la voz de Edge desde los servidores de GitHub
+on:
+  workflow_dispatch:
+
+jobs:
+  voz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install ws@8 --no-save
+      - run: |
+          node -e "import('./src/services/edgeTts.js').then(m => m.edgeSynthesize('Hola Mati, soy Robi').then(b => console.log('OK bytes', b.length)).catch(e => { console.log('ERROR', e.message); process.exit(1); }))"
