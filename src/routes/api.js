@@ -302,6 +302,12 @@ const TRIES = {
   'deploy-falla': () => deployReaction({ status: 'failure', repo: 'robot', env: 'prod', force: true }),
   susto: () => scare({ force: true }),
   'foco-fin': () => finishFocus({ minutes: 25 }),
+  'gol-rival': () =>
+    announce({ kind: 'futbol', text: pick('futbolGolRival', { us: 1, rival: 1, contra: 'Central' }), emotion: 'enojado', gesture: 'negar' }),
+  'derrota': () => announce({ kind: 'futbol', text: pick('futbolFinal_perdimos', { us: 0, rival: 1, contra: 'Central' }), emotion: 'triste', gesture: 'negar' }),
+  'victoria': () =>
+    announce({ kind: 'futbol', text: pick('futbolFinal_ganamos', { us: 2, rival: 0, contra: 'Central' }), emotion: 'riendo', actions: ['bandera'], gesture: 'asentir' }),
+  'central-perdio': () => announce({ kind: 'futbol', text: pick('futbolCentralPerdio', { contra: 'Boca' }), emotion: 'picaro' }),
   gol: () => announce({ kind: 'futbol', text: pick('futbolGol', { us: 1, rival: 0, contra: 'Central' }), emotion: 'riendo', actions: ['gol'], gesture: 'asentir' }),
 };
 
