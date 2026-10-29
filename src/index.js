@@ -4,6 +4,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { config } from './config.js';
 import apiRouter from './routes/api.js';
+import { loadReminders } from './services/reminders.js';
 import { startScheduler } from './services/scheduler.js';
 import { attachRobotSocket } from './ws/robotSocket.js';
 
@@ -29,6 +30,7 @@ async function start() {
   await mongoose.connect(config.mongoUri);
   console.log('MongoDB conectado');
   startScheduler();
+  await loadReminders();
   server.listen(config.port, () => {
     console.log(`robot-backend escuchando en :${config.port}`);
     console.log(`  REST      → http://localhost:${config.port}/api`);

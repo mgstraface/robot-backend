@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import { AI_EMOTIONS, GESTURES, parseReply } from '../emotions.js';
 import { Message } from '../models/Message.js';
 import { getPersonality } from '../models/Personality.js';
+import { runCommand } from './commands.js';
 import { getFocus } from './focus.js';
 import { formatTime } from '../time.js';
 
@@ -82,6 +83,16 @@ export async function chat({ deviceId, text, source = 'text' }, deps = {}) {
   const model = deps.callModel || callModel;
   const userText = String(text || '').trim();
   if (!userText) throw new Error('Mensaje vacío');
+
+  // Primero los comandos que no necesitan IA (hora, clima, timers, alarmas…): gratis e instantáneos
+  const command = await (deps.runCommand || runCommand)(userText);
+  if (command) {
+    await Message.insertMany([
+      { deviceId, role: 'user', text: userText, source },
+      { deviceId, role: 'assistant', text: command.text, emotion: command.emotion, source },
+    ]);
+    return { ...command, command: true };
+  }
 
   const personality = await getPersonality();
   const recent = await Message.find({ deviceId })
