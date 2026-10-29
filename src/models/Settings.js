@@ -15,6 +15,8 @@ export const DEFAULT_SETTINGS = {
   meetingNoticeMin: 10, // cuántos minutos antes avisa
   deployReactions: true,
   futbol: true, // hincha de Newell's: avisa partidos, festeja goles
+  frasesCadaHoras: 3, // cada cuánto tira una frase leprosa (0 = nunca)
+  frasesLeprosas: [], // frases propias (si está vacío usa las de fábrica)
   frameEnabled: false, // portarretrato: intercala la cara con fotos
   frameFaceSec: 60, // cuánto muestra la cara entre foto y foto
   framePhotoSec: 10, // cuánto muestra cada foto
@@ -39,6 +41,8 @@ const settingsSchema = new mongoose.Schema(
     meetingNoticeMin: { type: Number, min: 1, max: 120 },
     deployReactions: Boolean,
     futbol: Boolean,
+    frasesCadaHoras: Number,
+    frasesLeprosas: [{ type: String, maxlength: 300 }],
     frameEnabled: Boolean,
     frameFaceSec: { type: Number, min: 10, max: 3600 },
     framePhotoSec: { type: Number, min: 3, max: 120 },
@@ -97,6 +101,15 @@ export function sanitizeSettings(body = {}) {
   set('meetingNoticeMin', int(body.meetingNoticeMin, 1, 120));
   set('deployReactions', typeof body.deployReactions === 'boolean' ? body.deployReactions : undefined);
   set('futbol', typeof body.futbol === 'boolean' ? body.futbol : undefined);
+  set('frasesCadaHoras', int(body.frasesCadaHoras, 0, 24));
+  if (body.frasesLeprosas !== undefined) {
+    if (Array.isArray(body.frasesLeprosas)) {
+      update.frasesLeprosas = body.frasesLeprosas
+        .map((f) => String(f || '').trim().slice(0, 300))
+        .filter(Boolean)
+        .slice(0, 50);
+    } else errors.push('frasesLeprosas');
+  }
   set('frameEnabled', typeof body.frameEnabled === 'boolean' ? body.frameEnabled : undefined);
   set('frameFaceSec', int(body.frameFaceSec, 10, 3600));
   set('framePhotoSec', int(body.framePhotoSec, 3, 120));

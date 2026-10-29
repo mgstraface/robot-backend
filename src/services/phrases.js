@@ -29,6 +29,21 @@ const PHRASES = {
   futbolFinal_perdimos: ['Terminó. Perdimos {us} a {rival} con {contra}. Mañana será otro día.'],
   futbolFinal_empatamos: ['Terminó: empate {us} a {rival} con {contra}.'],
   futbolCentralPerdio: ['Ey… ¿viste? Central perdió con {contra}. Je, je, je.', 'Me enteré que Central perdió con {contra}. No digo nada, pero… je.'],
+  // Frases leprosas de fábrica (originales). Las propias se cargan en el panel, en Rutinas.
+  leprosa: [
+    'Rojo y negro en el corazón, todo el año.',
+    'Ser de Newell\'s no se explica: se siente.',
+    'Hoy, mañana y siempre: la Lepra.',
+    'Que suene fuerte: ¡Newell\'s, Newell\'s, Newell\'s!',
+    'En Rosario hay un solo grande, y es rojo y negro.',
+    '¿Sabías que Messi arrancó en las inferiores de Newell\'s? Obvio que sabías.',
+    'Bielsa nos enseñó que el que no arriesga, no gana.',
+    'Late el Coloso, late Rosario.',
+    'Para un leproso, el clásico vale más que un campeonato.',
+    '¡Vamos, vamos, la Lepra! Que se escuche hasta Arroyito.',
+    'Un día sin Newell\'s es un día perdido.',
+    'Al canalla, ni agua… bueno, agua sí, que hace calor.',
+  ],
   chiste: [
     '¿Por qué los esqueletos no pelean entre ellos? Porque no tienen agallas.',
     '¿Qué le dijo un fantasma a otro? ¿Vos creés en los humanos?',

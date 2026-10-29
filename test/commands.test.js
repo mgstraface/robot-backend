@@ -65,3 +65,11 @@ test('fútbol: comandos y lectura de ESPN', async () => {
   assert.deepEqual(diffMatch({ us: 2, rival: 0 }, m), ['golRival']);
   assert.deepEqual(diffMatch(undefined, m), []);
 });
+
+test('frases leprosas: comando y frases propias', async () => {
+  assert.deepEqual(parseCommand('Robi, cantá algo de Newell\'s'), { type: 'leprosa' });
+  assert.deepEqual(parseCommand('tirame una frase leprosa'), { type: 'leprosa' });
+  const { fraseLeprosa } = await import('../src/services/futbol.js');
+  assert.equal(fraseLeprosa({ frasesLeprosas: ['Mi frase'] }), 'Mi frase');
+  assert.ok(fraseLeprosa({ frasesLeprosas: [] }).length > 5);
+});

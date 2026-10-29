@@ -1,6 +1,6 @@
 // Reloj de las rutinas: una vez por minuto decide si hay que saludar, avisar una reunión,
 // recordar el agua, cerrar el bloque de foco o pegar un susto.
-import { futbolTick } from './futbol.js';
+import { frasesTick, futbolTick } from './futbol.js';
 import { getSettings } from '../models/Settings.js';
 import { DAY, isSleepHour, localParts, startOfLocalDay } from '../time.js';
 import { upcomingEvents } from './calendar.js';
@@ -56,6 +56,7 @@ export async function tick(now = Date.now()) {
 
   // Newell's: corre aunque esté en horario de dormir (un gol a la noche lo despierta)
   if (s.futbol) await safely('futbol', () => futbolTick({ now, tz: s.timezone, sleeping }));
+  if (s.futbol) await safely('frases', () => frasesTick({ now, s, sleeping }));
 
   if (sleeping) return;
 

@@ -173,3 +173,23 @@ export async function futbolTick({ now = Date.now(), tz, sleeping = false }) {
     });
   }
 }
+
+// ---------- frases leprosas
+
+let lastFraseAt = Date.now();
+
+/** Una frase al azar: las propias del panel o, si no hay, las de fábrica. */
+export function fraseLeprosa(s) {
+  const propias = (s?.frasesLeprosas || []).filter(Boolean);
+  return propias.length ? propias[Math.floor(Math.random() * propias.length)] : pick('leprosa');
+}
+
+/** Cada tantas horas (y no a la noche) tira una frase leprosa con la bandera. */
+export async function frasesTick({ now = Date.now(), s, sleeping }) {
+  if (sleeping || !s.frasesCadaHoras) return;
+  // un poco de azar para que no sea a horario fijo: entre 0,75 y 1,25 veces el intervalo
+  const every = s.frasesCadaHoras * 3600_000 * (0.75 + Math.random() * 0.5);
+  if (now - lastFraseAt < every) return;
+  lastFraseAt = now;
+  await announce({ kind: 'futbol', text: fraseLeprosa(s), emotion: 'feliz', actions: Math.random() < 0.5 ? ['bandera'] : [] });
+}

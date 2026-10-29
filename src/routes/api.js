@@ -9,6 +9,7 @@ import { getSettings, publicSettings, sanitizeSettings, updateSettings } from '.
 import { chat } from '../services/ai.js';
 import { announce, feedAfter } from '../services/announce.js';
 import { pick } from '../services/phrases.js';
+import { fraseLeprosa } from '../services/futbol.js';
 import { clearCalendarCache, upcomingEvents } from '../services/calendar.js';
 import { getFocus, startFocus, stopFocus } from '../services/focus.js';
 import { deployReaction, finishFocus, remindMeeting, remindWater, runBriefing, scare } from '../services/routines.js';
@@ -308,6 +309,7 @@ const TRIES = {
   'victoria': () =>
     announce({ kind: 'futbol', text: pick('futbolFinal_ganamos', { us: 2, rival: 0, contra: 'Central' }), emotion: 'riendo', actions: ['bandera'], gesture: 'asentir' }),
   'central-perdio': () => announce({ kind: 'futbol', text: pick('futbolCentralPerdio', { contra: 'Boca' }), emotion: 'picaro' }),
+  frase: async () => announce({ kind: 'futbol', text: fraseLeprosa(await getSettings()), emotion: 'feliz', actions: ['bandera'] }),
   gol: () => announce({ kind: 'futbol', text: pick('futbolGol', { us: 1, rival: 0, contra: 'Central' }), emotion: 'riendo', actions: ['gol'], gesture: 'asentir' }),
 };
 
