@@ -7,6 +7,7 @@
 #include <Arduino_GFX_Library.h>
 #include <WebSocketsClient.h>
 #include <WiFi.h>
+#include <WiFiMulti.h>
 #include <esp_system.h>
 
 #include "config.h"
@@ -26,6 +27,7 @@ Arduino_Canvas *canvas = new Arduino_Canvas(320, 172, panel);
 
 Face face;
 WebSocketsClient ws;
+WiFiMulti wifiMulti;  // varias redes: se conecta a la que encuentre
 bool wsConnected = false;
 uint32_t lastPing = 0;
 
@@ -141,7 +143,14 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  wifiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
+#ifdef WIFI_SSID_2
+  wifiMulti.addAP(WIFI_SSID_2, WIFI_PASSWORD_2);
+#endif
+#ifdef WIFI_SSID_3
+  wifiMulti.addAP(WIFI_SSID_3, WIFI_PASSWORD_3);
+#endif
+  wifiMulti.run();
 
   String path = String("/ws/robot?deviceId=") + ROBI_DEVICE + "&token=" + ROBI_TOKEN;
   ws.beginSSL(ROBI_HOST, ROBI_PORT, path.c_str());
@@ -157,7 +166,7 @@ void loop() {
   if (WiFi.status() == WL_CONNECTED) {
     if (!wifiShown) {
       wifiShown = true;
-      Serial.printf("[wifi] conectado, IP %s\n", WiFi.localIP().toString().c_str());
+      Serial.printf("[wifi] conectado a %s, IP %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
       face.showText("WiFi OK, buscando al servidor...", 4000);
     }
     ws.loop();
@@ -165,9 +174,17 @@ void loop() {
       lastPing = now;
       sendStatus();
     }
-  } else if (wifiShown) {
-    wifiShown = false;
-    face.showText("Se cayo el WiFi...", 4000);
+  } else {
+    if (wifiShown) {
+      wifiShown = false;
+      face.showText("Se cayo el WiFi...", 4000);
+    }
+    // busca de nuevo entre las redes conocidas cada 10 s
+    static uint32_t lastTry = 0;
+    if (now - lastTry > 10000) {
+      lastTry = now;
+      wifiMulti.run(3000);
+    }
   }
 
   // Aunque no haya conexión, la cara sigue viva (parpadea, vuelve a neutral)
