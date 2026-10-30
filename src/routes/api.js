@@ -361,6 +361,9 @@ router.post('/robot/servo', (req, res) => {
   res.json({ sentTo: broadcast({ type: 'servo', servo, angle: a }) });
 });
 router.post('/robot/servo/stop', (req, res) => res.json({ sentTo: broadcast({ type: 'servo_stop' }) }));
+// Token del robot, para copiarlo en firmware/include/secrets.h (solo con la clave de admin)
+router.get('/robot/token', (req, res) => res.json({ token: config.deviceToken }));
+
 router.post('/robot/test', (req, res) => {
   const { what } = req.body || {};
   if (!['pantalla', 'audio', 'servos', 'sensores', 'reiniciar'].includes(what)) return res.status(400).json({ error: 'Prueba inválida' });
