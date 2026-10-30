@@ -42,6 +42,7 @@ void UI::openMenu(const String &level, int index) {
               {"clima", "Clima", "", 0},            {"chiste", "Contame un chiste", "", 0},  {"modo", "Tierno / Terror", "", 0},
               {"brillo", "Brillo: " + String(brillo_) + "%", "", 0}, {"juegos", "Juegos", "", 0}};
   } else if (level == "temporizador") {
+    if (!timers_.empty()) items_.push_back({"cancelarTimers", timers_.size() == 1 ? "Cancelar el timer" : "Cancelar los timers", "", 0});
     int mins[] = {1, 3, 5, 10, 15, 30};
     for (int m : mins) items_.push_back({"timer", String(m) + (m == 1 ? " minuto" : " minutos"), "", m});
     items_.push_back({"cronometro", "Cronometro", "", 0});
@@ -66,6 +67,13 @@ void UI::sendMenu(const char *accion, const char *key, const String &value, int 
 
 void UI::addTimer(int min) { timers_.push_back(millis() + (uint32_t)min * 60000UL); }
 
+void UI::cancelTimers() {
+  timers_.clear();
+  sendMenu("cancelarTimers");
+  face_->setBadge("");
+  showPeek("Timer cancelado");
+}
+
 void UI::runItem(const Item &it) {
   const String &id = it.id;
   if (id == "cocina") {
@@ -79,6 +87,8 @@ void UI::runItem(const Item &it) {
     addTimer(it.min);
     sendMenu("timer", "min", "", it.min);
     screen_ = CARA;
+  } else if (id == "cancelarTimers") {
+    cancelTimers();
   } else if (id == "cronometro") {
     cronoAcc_ = 0;
     cronoSince_ = millis();
@@ -202,6 +212,10 @@ void UI::onLongPress() {
     sendMenu("cocina", "paso", "stop");
     cocina_ = false;
     showPeek("Listo", "Receta terminada");
+    return;
+  }
+  if (screen_ == CARA && !timers_.empty()) {
+    cancelTimers();
     return;
   }
   face_->setEmotion("escuchando");

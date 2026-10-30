@@ -6,7 +6,7 @@ import { cocinaAccion, getCocina, Recipe, startCocina, stopCocina } from '../ser
 import { runCommand } from '../services/commands.js';
 import { moodEvent } from '../services/mood.js';
 import { pick } from '../services/phrases.js';
-import { addReminder } from '../services/reminders.js';
+import { addReminder, cancelReminders } from '../services/reminders.js';
 
 /** Resumen de la cocina para la pantallita del robot. */
 export function cocinaParaRobot(now = Date.now()) {
@@ -60,6 +60,11 @@ export async function handleMenu(msg, reply, broadcast) {
       const min = Math.max(1, Math.min(180, Number(msg.min) || 0));
       await addReminder({ at: new Date(Date.now() + min * 60_000), kind: 'timer', text: '' });
       await announce({ kind: 'timer', text: pick('timerOk', { cuanto: min === 1 ? '1 minuto' : `${min} minutos` }), emotion: 'feliz', gesture: 'asentir' });
+      return;
+    }
+    case 'cancelarTimers': {
+      const n = await cancelReminders('timer');
+      await announce({ kind: 'timer', text: n ? pick('cancelados', { n: n === 1 ? 'el timer' : `${n} timers` }) : pick('nadaPendiente'), emotion: 'neutral', gesture: 'asentir' });
       return;
     }
     case 'comando': {

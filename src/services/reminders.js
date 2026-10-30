@@ -31,11 +31,15 @@ export async function pendingReminders() {
   return Reminder.find({ done: false }).sort({ at: 1 }).lean();
 }
 
-export async function cancelReminders() {
-  const list = await pendingReminders();
-  for (const r of list) clearTimeout(timers.get(String(r._id)));
-  timers.clear();
-  await Reminder.updateMany({ done: false }, { done: true });
+/** Cancela los pendientes. Con kind ('timer') cancela solo esos (las alarmas quedan). */
+export async function cancelReminders(kind) {
+  const filter = { done: false, ...(kind ? { kind } : {}) };
+  const list = await Reminder.find(filter).lean();
+  for (const r of list) {
+    clearTimeout(timers.get(String(r._id)));
+    timers.delete(String(r._id));
+  }
+  await Reminder.updateMany(filter, { done: true });
   return list.length;
 }
 

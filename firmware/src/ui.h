@@ -45,6 +45,7 @@ class UI : public TouchHandler {
   void showPeek(const String &a, const String &b = "", const String &c = "");
   void sendMenu(const char *accion, const char *key = nullptr, const String &value = "", int num = -1);
   void addTimer(int min);
+  void cancelTimers();
 
   void drawMenu();
   void drawPeek();
