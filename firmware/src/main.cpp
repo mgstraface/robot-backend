@@ -141,6 +141,7 @@ void onServerMessage(const char *payload, size_t length) {
   JsonDocument msg;
   if (deserializeJson(msg, payload, length)) return;
   const char *type = msg["type"] | "";
+  Serial.printf("[servidor] %s %s\n", type, (const char *)(msg["emotion"] | ""));
 
   if (!strcmp(type, "welcome")) {
     face.showText("Conectado", 2000);
@@ -213,6 +214,9 @@ void onWsEvent(WStype_t type, uint8_t *payload, size_t length) {
       if (wsConnected) face.showText("Sin conexion con el servidor...", 4000);
       wsConnected = false;
       Serial.println("[ws] desconectado");
+      break;
+    case WStype_ERROR:
+      Serial.printf("[ws] error: %.*s\n", (int)length, (const char *)payload);
       break;
     case WStype_TEXT:
       onServerMessage((const char *)payload, length);
