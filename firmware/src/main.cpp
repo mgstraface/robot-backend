@@ -123,6 +123,18 @@ void onWsEvent(WStype_t type, uint8_t *payload, size_t length) {
   }
 }
 
+// Ayuda: si no encuentra ninguna red conocida, escribe las que ve (para copiar el nombre exacto)
+void listNetworks() {
+  static uint32_t lastList = 0;
+  if (lastList && millis() - lastList < 60000) return;  // una vez por minuto
+  lastList = millis();
+  int n = WiFi.scanNetworks();
+  Serial.printf("[wifi] no encuentro las redes de secrets.h. Veo %d redes:\n", n);
+  for (int i = 0; i < n; i++) Serial.printf("   \"%s\"  (señal %d)\n", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
+  Serial.printf("[wifi] en secrets.h tengo: \"%s\"\n", WIFI_SSID);
+  face.showText("No encuentro el WiFi", 5000);
+}
+
 void setup() {
   Serial.begin(115200);
   delay(300);
@@ -183,7 +195,7 @@ void loop() {
     static uint32_t lastTry = 0;
     if (now - lastTry > 10000) {
       lastTry = now;
-      wifiMulti.run(3000);
+      if (wifiMulti.run(3000) != WL_CONNECTED) listNetworks();
     }
   }
 
