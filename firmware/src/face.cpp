@@ -27,8 +27,10 @@ uint16_t Face::parseColor(const char *hex) {
   return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 }
 
-void Face::begin(Arduino_GFX *canvas) {
+void Face::begin(Arduino_Canvas *canvas) {
   g_ = canvas;
+  canvas_ = canvas;
+  useClips_ = clips_.begin();
   nextBlink_ = millis() + 2500;
 }
 
@@ -64,13 +66,52 @@ void Face::playAction(const String &name, const String &extra) {
     if (!x.length()) x = a.substring(colon + 1);
     a = a.substring(0, colon);
   }
-  uint32_t ms = actionMs(a);
+  if (a == "colmillos") a = "mordisco";  // en el panel se llama así
+  uint32_t ms = 0;
+  if (useClips_) {
+    String st = terror_ ? "terror" : "tierno";
+    String name = a == "clima" ? "clima:" + (x.length() ? x : String("despejado")) : a;
+    int idx = clips_.find("a/" + st + "/" + name);
+    if (idx < 0) idx = clips_.find("a/tierno/" + name);
+    if (idx < 0) idx = clips_.find("a/terror/" + name);
+    ms = clips_.durationMs(idx);
+  }
+  if (!ms) ms = actionMs(a);
   if (!ms) return;
   action_ = a;
   actionExtra_ = x;
   actionStart_ = millis();
   actionUntil_ = actionStart_ + ms;
   dirty_ = true;
+}
+
+// Vida propia (como el panel): en neutral y sin nada que hacer, cada tanto hace alguna animación suya
+void Face::idleLife(uint32_t now) {
+  if (!nextIdle_) nextIdle_ = now + 15000 + random(0, 20000);
+  if ((int32_t)(now - nextIdle_) < 0) return;
+  nextIdle_ = now + 20000 + random(0, 30000);
+  if (emotion_ != "neutral" || action_.length() || talking_) return;
+  String pre = String("a/") + (terror_ ? "terror" : "tierno") + "/";
+  std::vector<String> opciones;
+  for (int i = 0; i < clips_.count(); i++) {
+    String n = clips_.name(i);
+    if (!n.startsWith(pre)) continue;
+    String a = n.substring(pre.length());
+    // las que dispara el servidor no son de vida propia
+    if (a == "gol" || a == "bandera" || a.startsWith("clima")) continue;
+    opciones.push_back(a);
+  }
+  if (!opciones.empty()) playAction(opciones[random(0, opciones.size())]);
+}
+
+// Qué clip tiene que estar sonando ahora
+String Face::clipKey() const {
+  String st = terror_ ? "terror" : "tierno";
+  if (action_.length()) {
+    String name = action_ == "clima" ? "clima:" + (actionExtra_.length() ? actionExtra_ : String("despejado")) : action_;
+    return "a/" + st + "/" + name;
+  }
+  return "e/" + st + "/" + emotion_;
 }
 
 // Caras que se mueven solas (hay que redibujarlas seguido)
@@ -88,8 +129,20 @@ bool Face::update(uint32_t now) {
     action_ = "";
     dirty_ = true;
   }
-  // parpadeo
-  if (!blinking_ && now >= nextBlink_) {
+  if (useClips_) {
+    idleLife(now);
+    // caras filmadas del panel: elegir el clip y avanzar cuadros (el parpadeo ya viene adentro)
+    String key = clipKey();
+    if (key != clipKey_) {
+      clipKey_ = key;
+      int idx = clips_.find(key);
+      if (idx < 0 && key.startsWith("a/terror/")) idx = clips_.find("a/tierno/" + key.substring(9));
+      if (idx < 0 && key.startsWith("e/")) idx = clips_.find(String("e/") + (terror_ ? "terror" : "tierno") + "/neutral");
+      clips_.start(idx, now);
+      dirty_ = true;
+    }
+    if (clips_.tick(now)) dirty_ = true;
+  } else if (!blinking_ && now >= nextBlink_) {  // parpadeo
     blinking_ = true;
     blinkEnd_ = now + 120;
     dirty_ = true;
@@ -108,7 +161,7 @@ bool Face::update(uint32_t now) {
   }
   // la boca que habla se anima sola (~12 cuadros por segundo)
   if (talking_ && now - lastFrame_ > 80) dirty_ = true;
-  if (animated() && now - lastFrame_ > 40) dirty_ = true;  // ~25 cuadros por segundo
+  if (!useClips_ && animated() && now - lastFrame_ > 40) dirty_ = true;  // ~25 cuadros por segundo
   if (!dirty_) return false;
   draw(now);
   lastFrame_ = now;
@@ -293,6 +346,25 @@ void Face::drawAction(uint32_t now) {
 }
 
 void Face::draw(uint32_t now) {
+  if (useClips_ && clips_.current() >= 0) clips_.blit(canvas_->getFramebuffer(), eye_, glanceDx_);
+  else drawVector(now);
+  if (badge_.length()) {
+    g_->setTextSize(2);
+    g_->setTextColor(0xF52A);
+    g_->setCursor(320 - 14 - badge_.length() * 12, 10);
+    g_->print(badge_);
+  }
+
+  if (text_.length()) {
+    g_->fillRect(0, 150, 320, 22, C_BG);
+    g_->setTextColor(C_WHITE);
+    g_->setTextSize(1);
+    g_->setCursor(8, 158);
+    g_->print(text_.substring(0, 50));
+  }
+}
+
+void Face::drawVector(uint32_t now) {
   g_->fillScreen(C_BG);
   const String &e = emotion_;
 
@@ -390,20 +462,5 @@ void Face::draw(uint32_t now) {
       lid(R, 20, 6, false);
     }
     mouth(nullptr);
-  }
-
-  if (badge_.length()) {
-    g_->setTextSize(2);
-    g_->setTextColor(0xF52A);
-    g_->setCursor(320 - 14 - badge_.length() * 12, 10);
-    g_->print(badge_);
-  }
-
-  if (text_.length()) {
-    g_->fillRect(0, 150, 320, 22, C_BG);
-    g_->setTextColor(C_WHITE);
-    g_->setTextSize(1);
-    g_->setCursor(8, 158);
-    g_->print(text_.substring(0, 50));
   }
 }

@@ -1,11 +1,13 @@
 #pragma once
 #include <Arduino_GFX_Library.h>
 
+#include "clips.h"
+
 // Dibuja la cara de Robi en la pantalla (320x172 apaisada), con las mismas caras que el panel.
 // Las coordenadas son las del panel (240x180 centradas): x de -40 a 280, y de 4 a 176.
 class Face {
  public:
-  void begin(Arduino_GFX *canvas);
+  void begin(Arduino_Canvas *canvas);
   void setEmotion(const String &emotion);
   void setColor(uint16_t color) { eye_ = color; dirty_ = true; }
   void setTerror(bool terror) { terror_ = terror; dirty_ = true; }
@@ -27,6 +29,8 @@ class Face {
 
  private:
   void draw(uint32_t now);
+  void drawVector(uint32_t now);  // caras dibujadas a mano (respaldo si no está caras.bin)
+  String clipKey() const;
   int X(float x) const { return (int)(x + 40); }
   int Y(float y) const { return (int)(y - 4); }
   void eye(float cx, float w = 40, float h = 56, float dy = 0, float dx = 0);
@@ -41,6 +45,12 @@ class Face {
   void cloud(float cx, float cy, uint16_t c);
 
   Arduino_GFX *g_ = nullptr;
+  Arduino_Canvas *canvas_ = nullptr;
+  ClipPlayer clips_;
+  bool useClips_ = false;
+  String clipKey_;
+  uint32_t nextIdle_ = 0;
+  void idleLife(uint32_t now);
   String emotion_ = "neutral";
   uint16_t eye_ = 0x5F1F;
   bool terror_ = false;
