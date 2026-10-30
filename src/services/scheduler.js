@@ -1,7 +1,10 @@
 // Reloj de las rutinas: una vez por minuto decide si hay que saludar, avisar una reunión,
 // recordar el agua, cerrar el bloque de foco o pegar un susto.
 import { frasesTick, futbolTick } from './futbol.js';
-import { isHalloween } from './extras.js';
+import { fechasAvisos, isHalloween } from './extras.js';
+import { moodTick } from './mood.js';
+import { announce } from './announce.js';
+import { pick } from './phrases.js';
 import { getSettings } from '../models/Settings.js';
 import { DAY, isSleepHour, localParts, startOfLocalDay } from '../time.js';
 import { upcomingEvents } from './calendar.js';
@@ -55,6 +58,11 @@ export async function tick(now = Date.now()) {
   const finished = takeFinishedFocus(now);
   if (finished) await safely('foco', () => finishFocus(finished));
 
+  // Ánimo: evoluciona cada minuto; si hace mucho que nadie le da bola, lo reclama
+  if (moodTick({ sleeping, now }) && !getFocus(now)) {
+    await safely('reclamo', () => announce({ kind: 'animo', text: pick('reclamo'), emotion: 'aburrido', gesture: 'saludar' }));
+  }
+
   // Newell's: corre aunque esté en horario de dormir (un gol a la noche lo despierta)
   if (s.futbol) await safely('futbol', () => futbolTick({ now, tz: s.timezone, sleeping }));
   if (s.futbol) await safely('frases', () => frasesTick({ now, s, sleeping }));
@@ -65,6 +73,16 @@ export async function tick(now = Date.now()) {
   if (s.morningGreeting && state.greetedDay !== dayKey) {
     state.greetedDay = dayKey;
     await safely('saludo', () => runBriefing(now));
+  }
+
+  // Cumpleaños y fechas: una vez por día, al rato de despertarse
+  if (state.fechasDay !== dayKey && p.hour >= Math.max(9, s.sleepTo)) {
+    state.fechasDay = dayKey;
+    for (const a of fechasAvisos(s.fechas || [], now, s.timezone)) {
+      await safely('fechas', () =>
+        announce({ kind: 'fecha', text: a.texto, emotion: a.dias === 0 ? 'emocionado' : 'curioso', gesture: a.dias === 0 ? 'festejar' : 'senalar' })
+      );
+    }
   }
 
   // Reuniones

@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import { isValidTimeZone } from '../time.js';
 
 // Ajustes de las rutinas del robot (un solo documento).
+export const SERVO_NAMES = ['pan', 'tilt', 'armL', 'armR'];
+
 export const DEFAULT_SETTINGS = {
   ownerName: 'Mati',
   city: { name: 'Rosario', lat: -32.9468, lon: -60.6393 },
@@ -17,6 +19,14 @@ export const DEFAULT_SETTINGS = {
   futbol: true, // hincha de Newell's: avisa partidos, festeja goles
   voz: 'es-AR-TomasNeural', // voz de Edge (ver services/edgeTts.js)
   vozTono: 'normal', // normal | agudo | grave
+  // Calibración de cada servo (grados 0–180). Límites conservadores hasta calibrar con el robot armado.
+  servos: {
+    pan: { centro: 90, min: 30, max: 150, invertido: false, vel: 120 },
+    tilt: { centro: 90, min: 65, max: 115, invertido: false, vel: 90 },
+    armL: { centro: 20, min: 0, max: 170, invertido: false, vel: 180 },
+    armR: { centro: 20, min: 0, max: 170, invertido: true, vel: 180 },
+  },
+  fechas: [], // [{ nombre, dia, mes, tipo: cumple | aniversario | otro }]
   frasesCadaHoras: 3, // cada cuánto tira una frase leprosa (0 = nunca)
   frasesLeprosas: [], // frases propias (si está vacío usa las de fábrica)
   frameEnabled: false, // portarretrato: intercala la cara con fotos
@@ -45,6 +55,8 @@ const settingsSchema = new mongoose.Schema(
     futbol: Boolean,
     voz: String,
     vozTono: String,
+    servos: { type: Object },
+    fechas: [{ _id: false, nombre: String, dia: Number, mes: Number, tipo: String }],
     frasesCadaHoras: Number,
     frasesLeprosas: [{ type: String, maxlength: 300 }],
     frameEnabled: Boolean,
@@ -107,6 +119,34 @@ export function sanitizeSettings(body = {}) {
   set('futbol', typeof body.futbol === 'boolean' ? body.futbol : undefined);
   set('voz', typeof body.voz === 'string' && /^[a-z]{2}-[A-Z]{2}-[A-Za-z]+Neural$/.test(body.voz) ? body.voz : undefined);
   set('vozTono', ['normal', 'agudo', 'grave'].includes(body.vozTono) ? body.vozTono : undefined);
+  if (body.servos !== undefined) {
+    const out = {};
+    let ok = body.servos && typeof body.servos === 'object';
+    for (const k of SERVO_NAMES) {
+      const v = body.servos?.[k];
+      if (!v) continue;
+      const n = (x) => Math.round(Number(x));
+      const c = { centro: n(v.centro), min: n(v.min), max: n(v.max), invertido: Boolean(v.invertido), vel: n(v.vel) };
+      if (![c.centro, c.min, c.max, c.vel].every(Number.isFinite) || c.min < 0 || c.max > 180 || c.min > c.centro || c.centro > c.max || c.vel < 10 || c.vel > 360) ok = false;
+      else out[k] = c;
+    }
+    if (ok) update.servos = { ...DEFAULT_SETTINGS.servos, ...out };
+    else errors.push('servos');
+  }
+  if (body.fechas !== undefined) {
+    if (!Array.isArray(body.fechas)) errors.push('fechas');
+    else {
+      update.fechas = body.fechas
+        .map((f) => ({
+          nombre: String(f?.nombre || '').trim().slice(0, 60),
+          dia: Number(f?.dia),
+          mes: Number(f?.mes),
+          tipo: ['cumple', 'aniversario', 'otro'].includes(f?.tipo) ? f.tipo : 'cumple',
+        }))
+        .filter((f) => f.nombre && Number.isInteger(f.dia) && Number.isInteger(f.mes) && f.mes >= 1 && f.mes <= 12 && f.dia >= 1 && f.dia <= 31)
+        .slice(0, 40);
+    }
+  }
   set('frasesCadaHoras', int(body.frasesCadaHoras, 0, 24));
   if (body.frasesLeprosas !== undefined) {
     if (Array.isArray(body.frasesLeprosas)) {

@@ -6,6 +6,8 @@ import { getPersonality } from '../models/Personality.js';
 import { getSettings } from '../models/Settings.js';
 import { runCommand } from './commands.js';
 import { isHalloween } from './extras.js';
+import { getMood, moodEvent } from './mood.js';
+import { extractMemories, memoriesForPrompt, remember } from './memory.js';
 import { getFocus } from './focus.js';
 import { formatTime } from '../time.js';
 
@@ -27,13 +29,22 @@ Usalo para responder sí (asentir) o no (negar), saludar, festejar, encogerte de
 
 const TZ = 'America/Argentina/Buenos_Aires';
 
-export function buildSystemPrompt(personality, now = new Date(), { focus = null, futbol = false } = {}) {
+export function buildSystemPrompt(personality, now = new Date(), { focus = null, futbol = false, animo = '', recuerdos = '' } = {}) {
   const fecha = now.toLocaleString('es-AR', {
     timeZone: TZ,
     dateStyle: 'full',
     timeStyle: 'short',
   });
   let prompt = `${personality.systemPrompt.trim()}\n\nFecha y hora actual: ${fecha}.\n${EMOTION_INSTRUCTIONS}`;
+  if (recuerdos) {
+    prompt += `\n\nCosas que sabés de tu dueño por charlas anteriores (usalas cuando venga al caso, sin recitarlas):\n${recuerdos}`;
+  }
+  prompt +=
+    '\n\nSi te cuenta algo importante para recordar a futuro (gustos, planes, gente, fechas, cómo le fue en algo), ' +
+    'agregá al final de tu respuesta [recordar: el dato en pocas palabras]. No lo uses para cosas triviales.';
+  if (animo) {
+    prompt += `\n\nCómo te sentís ahora: ${animo}. Que se note un poco en cómo respondés (sin decirlo con números).`;
+  }
   if (isHalloween(now.getTime())) {
     prompt +=
       '\n\nHoy es Halloween: estás en modo terror todo el día. Respondé con onda tenebrosa y divertida, ' +
@@ -74,10 +85,10 @@ export function buildHistory(messages) {
 }
 
 /** Llama al modelo con el historial + el mensaje nuevo. Separado para poder reemplazarlo en tests. */
-export async function callModel({ system, messages }) {
+export async function callModel({ system, messages, maxTokens }) {
   const response = await getClient().messages.create({
     model: config.ai.model,
-    max_tokens: config.ai.maxTokens,
+    max_tokens: maxTokens || config.ai.maxTokens,
     system,
     messages,
   });
@@ -87,6 +98,17 @@ export async function callModel({ system, messages }) {
     .join('')
     .trim();
 }
+
+// Cuento de terror: respuesta más larga, para leer en voz alta
+export function isStoryRequest(text) {
+  const t = String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return /\b(conta|contame|contanos|narra|narrame|deci|decime|tira|tirame)\b.*\b(cuento|historia|leyenda)\b/.test(t);
+}
+
+const STORY_INSTRUCTIONS =
+  '\n\nTe pidieron un cuento. Contá un cuento de terror ORIGINAL y corto (entre 120 y 200 palabras), para leer en voz alta: ' +
+  'con clima, algo de suspenso y un final que dé un poco de miedo o una vuelta graciosa, sin gore. Usá la emoción asustado o picaro ' +
+  'y el gesto taparse. Si no aclaró, que sea de terror.';
 
 /**
  * Conversa con la mascota: arma el contexto (personalidad + últimos mensajes de ese dispositivo),
@@ -107,6 +129,7 @@ export async function chat({ deviceId, text, source = 'text' }, deps = {}) {
     return { ...command, command: true };
   }
 
+  moodEvent('charla');
   const personality = await getPersonality();
   const recent = await Message.find({ deviceId })
     .sort({ createdAt: -1 })
@@ -114,8 +137,14 @@ export async function chat({ deviceId, text, source = 'text' }, deps = {}) {
     .lean();
 
   const messages = buildHistory([...recent.reverse(), { role: 'user', text: userText }]);
-  const raw = await model({ system: buildSystemPrompt(personality, new Date(), { focus: getFocus(), futbol: (await getSettings()).futbol }), messages });
-  const { emotion, gesture, text: reply } = parseReply(raw);
+  const cuento = isStoryRequest(userText);
+  let system = buildSystemPrompt(personality, new Date(), { focus: getFocus(), futbol: (await getSettings()).futbol, animo: getMood().descripcion, recuerdos: await memoriesForPrompt().catch(() => '') });
+  if (cuento) system += STORY_INSTRUCTIONS;
+  const raw = await model({ system, messages, maxTokens: cuento ? 900 : undefined });
+  const parsed = parseReply(raw);
+  const { emotion, gesture } = parsed;
+  const { text: reply, memories } = extractMemories(parsed.text);
+  if (memories.length) await remember(memories).catch((e) => console.error('[memoria]', e.message));
   const finalText = reply || '...';
 
   await Message.insertMany([

@@ -44,6 +44,12 @@ const PHRASES = {
     'Un día sin Newell\'s es un día perdido.',
     'Al canalla, ni agua… bueno, agua sí, que hace calor.',
   ],
+  reclamo: [
+    '¿Hola? ¿Hay alguien ahí? Hace rato que nadie me da bola…',
+    'Me estoy aburriendo un montón. ¿Jugamos a algo?',
+    'Ey, ¿te olvidaste de mí? Un mimito no vendría mal.',
+    'Psst… estoy acá. Contame algo, dale.',
+  ],
   chiste: [
     '¿Por qué los esqueletos no pelean entre ellos? Porque no tienen agallas.',
     '¿Qué le dijo un fantasma a otro? ¿Vos creés en los humanos?',

@@ -78,3 +78,18 @@ test('voz de Edge: token Sec-MS-GEC v2 igual al de referencia', async () => {
     '492D7694A183A45E-56E821F95D4579C5B7C7E33DC7303FF379EC36D510213555BBBB9EB17EF15876'
   );
 });
+
+test('memoria: saca los [recordar: ...] de la respuesta', async () => {
+  const { extractMemories } = await import('../src/services/memory.js');
+  const r = extractMemories('¡Qué bueno! Mucha suerte el viernes. [recordar: el viernes tiene reunión con un cliente grande]');
+  assert.equal(r.text, '¡Qué bueno! Mucha suerte el viernes.');
+  assert.deepEqual(r.memories, ['el viernes tiene reunión con un cliente grande']);
+  assert.deepEqual(extractMemories('Hola').memories, []);
+});
+
+test('cuento: detecta el pedido', async () => {
+  const { isStoryRequest } = await import('../src/services/ai.js');
+  assert.equal(isStoryRequest('Robi, contame un cuento de terror'), true);
+  assert.equal(isStoryRequest('narrame una historia'), true);
+  assert.equal(isStoryRequest('¿cómo estás?'), false);
+});

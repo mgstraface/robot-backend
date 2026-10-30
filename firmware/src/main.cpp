@@ -7,6 +7,7 @@
 #include <Arduino_GFX_Library.h>
 #include <WebSocketsClient.h>
 #include <WiFi.h>
+#include <esp_system.h>
 
 #include "config.h"
 #include "face.h"
@@ -55,9 +56,44 @@ void onServerMessage(const char *payload, size_t length) {
     Serial.printf("[gesto] %s (servos: etapa 4)\n", (const char *)(msg["gesture"] | ""));
   } else if (!strcmp(type, "action")) {
     Serial.printf("[acción] %s\n", (const char *)(msg["action"] | ""));
+  } else if (!strcmp(type, "test")) {
+    String what = msg["what"] | "";
+    if (what == "reiniciar") ESP.restart();
+    if (what == "pantalla") {
+      face.setEmotion("feliz");
+      face.showText("Prueba de pantalla", 3000);
+    }
+  } else if (!strcmp(type, "calibration") || !strcmp(type, "servo") || !strcmp(type, "servo_stop")) {
+    Serial.printf("[servos] %s (se conectan en la etapa 4)\n", type);
   } else if (!strcmp(type, "error")) {
     Serial.printf("[servidor] error: %s\n", (const char *)(msg["message"] | ""));
   }
+}
+
+const char *resetReason() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON: return "encendido";
+    case ESP_RST_SW: return "reinicio pedido";
+    case ESP_RST_PANIC: return "error (panic)";
+    case ESP_RST_BROWNOUT: return "baja tension (brownout)";
+    case ESP_RST_INT_WDT:
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_WDT: return "watchdog";
+    case ESP_RST_DEEPSLEEP: return "salio de deep sleep";
+    default: return "otro";
+  }
+}
+
+// Diagnóstico: el panel lo muestra en la pestaña Robot
+void sendStatus() {
+  JsonDocument st;
+  st["type"] = "status";
+  st["firmware"] = FIRMWARE_VERSION;
+  st["uptime"] = millis() / 1000;
+  st["resetReason"] = resetReason();
+  st["rssi"] = WiFi.RSSI();
+  st["heap"] = ESP.getFreeHeap();
+  sendJson(st);
 }
 
 void onWsEvent(WStype_t type, uint8_t *payload, size_t length) {
@@ -69,6 +105,7 @@ void onWsEvent(WStype_t type, uint8_t *payload, size_t length) {
       hello["type"] = "hello";
       hello["firmware"] = FIRMWARE_VERSION;
       sendJson(hello);
+      sendStatus();
       break;
     }
     case WStype_DISCONNECTED:
@@ -124,6 +161,10 @@ void loop() {
       face.showText("WiFi OK, buscando al servidor...", 4000);
     }
     ws.loop();
+    if (wsConnected && now - lastPing > 30000) {
+      lastPing = now;
+      sendStatus();
+    }
   } else if (wifiShown) {
     wifiShown = false;
     face.showText("Se cayo el WiFi...", 4000);

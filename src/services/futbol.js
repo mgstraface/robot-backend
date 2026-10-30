@@ -1,6 +1,7 @@
 // Newell's en vivo: próximos partidos, goles y resultados desde los marcadores públicos de ESPN (gratis, sin clave).
 // El scheduler llama a futbolTick() cada minuto; solo consulta seguido mientras hay partido.
 import { announce } from './announce.js';
+import { moodEvent } from './mood.js';
 import { pick } from './phrases.js';
 import { formatTime } from '../time.js';
 
@@ -159,12 +160,14 @@ export async function futbolTick({ now = Date.now(), tz, sleeping = false }) {
   if (!match) return;
   const prev = state.live.get(match.id);
   for (const what of diffMatch(prev, match)) {
+    if (what === 'gol') moodEvent('gol');
     if (what === 'gol') await announce({ kind: 'futbol', text: pick('futbolGol', vars(match)), emotion: 'riendo', actions: ['gol'], gesture: 'festejar' });
     else await announce({ kind: 'futbol', text: pick('futbolGolRival', vars(match)), emotion: 'enojado', gesture: 'negar' });
   }
   state.live.set(match.id, { us: match.us.score, rival: match.rival.score });
   if (match.state === 'post' && once(`final:${match.id}`)) {
     const r = resultWord(match) || 'empatamos';
+    if (r !== 'empatamos') moodEvent(r === 'ganamos' ? 'victoria' : 'derrota');
     await announce({
       kind: 'futbol',
       text: pick(`futbolFinal_${r}`, vars(match)),

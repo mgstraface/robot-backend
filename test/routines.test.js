@@ -180,3 +180,46 @@ test('sanitizeSettings valida el portarretrato', () => {
   const bad = sanitizeSettings({ frameEnabled: 'si', framePhotoSec: 1 });
   assert.deepEqual(bad.errors.sort(), ['frameEnabled', 'framePhotoSec']);
 });
+
+test('ánimo: el tiempo y los eventos lo cambian', async () => {
+  const { step, applyEvent, describeMood } = await import('../src/services/mood.js');
+  let m = { energia: 80, humor: 60, atencion: 30, lastInteraction: 0 };
+  for (let i = 0; i < 120; i++) m = step(m); // dos horas sin nadie
+  assert.ok(m.atencion > 65 && m.energia < 80);
+  const mimado = applyEvent(m, 'mimo', 1);
+  assert.ok(mimado.humor > m.humor && mimado.atencion < m.atencion && mimado.lastInteraction === 1);
+  let noche = { ...m, energia: 10 };
+  for (let i = 0; i < 60; i++) noche = step(noche, { sleeping: true });
+  assert.ok(noche.energia > 50);
+  assert.match(describeMood({ energia: 20, humor: 90, atencion: 90 }), /cansado.*contento.*bola/);
+});
+
+test('cumpleaños: avisa el día, el anterior y 3 días antes', async () => {
+  const { daysUntil, fechasAvisos } = await import('../src/services/extras.js');
+  const tz = 'America/Argentina/Buenos_Aires';
+  const now = Date.UTC(2026, 9, 29, 15, 0); // jueves 29/10
+  assert.equal(daysUntil(29, 10, now, tz), 0);
+  assert.equal(daysUntil(1, 11, now, tz), 3);
+  assert.equal(daysUntil(28, 10, now, tz), 364);
+  const avisos = fechasAvisos(
+    [
+      { nombre: 'Sofi', dia: 1, mes: 11, tipo: 'cumple' },
+      { nombre: 'mamá', dia: 30, mes: 10, tipo: 'cumple' },
+      { nombre: 'Lejos', dia: 15, mes: 12, tipo: 'cumple' },
+    ],
+    now,
+    tz
+  );
+  assert.equal(avisos.length, 2);
+  assert.match(avisos[0].texto, /domingo cumple Sofi/);
+  assert.match(avisos[1].texto, /mañana cumple mamá/);
+});
+
+test('calibración de servos: valida rangos', () => {
+  const ok = sanitizeSettings({ servos: { pan: { centro: 90, min: 40, max: 140, invertido: false, vel: 120 } } });
+  assert.equal(ok.errors.length, 0);
+  assert.equal(ok.update.servos.pan.min, 40);
+  assert.ok(ok.update.servos.tilt); // los demás quedan con los valores por defecto
+  const mal = sanitizeSettings({ servos: { pan: { centro: 10, min: 40, max: 140, vel: 120 } } });
+  assert.deepEqual(mal.errors, ['servos']);
+});

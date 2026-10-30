@@ -5,10 +5,12 @@ import { EMOTIONS, GESTURES, isEmotion, ROBOT_ACTIONS } from '../emotions.js';
 import { Message } from '../models/Message.js';
 import { isJpeg, MAX_PHOTO_BYTES, MAX_PHOTOS, Photo } from '../models/Photo.js';
 import { appearanceOf, FACE_STYLES, getPersonality, updatePersonality } from '../models/Personality.js';
-import { getSettings, publicSettings, sanitizeSettings, updateSettings } from '../models/Settings.js';
+import { getSettings, publicSettings, sanitizeSettings, SERVO_NAMES, updateSettings } from '../models/Settings.js';
 import { chat } from '../services/ai.js';
 import { announce, feedAfter } from '../services/announce.js';
 import { pick } from '../services/phrases.js';
+import { getMood, moodEvent } from '../services/mood.js';
+import { listMemories, Memory, remember } from '../services/memory.js';
 import { isHalloween } from '../services/extras.js';
 import { fraseLeprosa } from '../services/futbol.js';
 import { clearCalendarCache, upcomingEvents } from '../services/calendar.js';
@@ -211,6 +213,7 @@ router.put(
     const { update, errors } = sanitizeSettings(req.body);
     if (errors.length) return res.status(400).json({ error: `Valores inválidos: ${errors.join(', ')}` });
     const saved = await updateSettings(update);
+    if (update.servos) broadcast({ type: 'calibration', servos: saved.servos });
     if ('calendarUrl' in update) clearCalendarCache();
     resetScarePlan();
     res.json(publicSettings(saved));
@@ -277,6 +280,48 @@ router.post('/focus', (req, res) => {
 router.delete('/focus', (req, res) => {
   stopFocus();
   res.json({ focus: null });
+});
+
+// ---------- Calibración y diagnóstico del robot
+router.post('/robot/servo', (req, res) => {
+  const { servo, angle } = req.body || {};
+  const a = Math.round(Number(angle));
+  if (!SERVO_NAMES.includes(servo) || !Number.isFinite(a) || a < 0 || a > 180) return res.status(400).json({ error: 'Servo o ángulo inválido' });
+  // modo calibración: el robot mueve SOLO ese servo, despacio
+  res.json({ sentTo: broadcast({ type: 'servo', servo, angle: a }) });
+});
+router.post('/robot/servo/stop', (req, res) => res.json({ sentTo: broadcast({ type: 'servo_stop' }) }));
+router.post('/robot/test', (req, res) => {
+  const { what } = req.body || {};
+  if (!['pantalla', 'audio', 'servos', 'sensores', 'reiniciar'].includes(what)) return res.status(400).json({ error: 'Prueba inválida' });
+  res.json({ sentTo: broadcast({ type: 'test', what }) });
+});
+
+// ---------- Memoria de largo plazo
+router.get('/memories', asyncRoute(async (req, res) => res.json(await listMemories())));
+router.post(
+  '/memories',
+  asyncRoute(async (req, res) => {
+    const text = String(req.body?.text || '').trim();
+    if (!text) return res.status(400).json({ error: 'Falta el texto' });
+    await remember([text]);
+    res.json(await listMemories());
+  })
+);
+router.delete(
+  '/memories/:id',
+  asyncRoute(async (req, res) => {
+    await Memory.deleteOne({ _id: req.params.id });
+    res.json(await listMemories());
+  })
+);
+
+// ---------- Ánimo
+router.get('/mood', (req, res) => res.json(getMood()));
+router.post('/mood/event', (req, res) => {
+  const { kind } = req.body || {};
+  if (!['mimo', 'juego', 'tocar'].includes(kind)) return res.status(400).json({ error: 'Evento inválido' });
+  res.json(moodEvent(kind));
 });
 
 // Mover la cabeza del robot (asentir, negar, mirar…)

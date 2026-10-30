@@ -2,14 +2,16 @@ import { WebSocketServer } from 'ws';
 import { config } from '../config.js';
 import { isEmotion, MOTION_REACTIONS, TOUCH_REACTIONS } from '../emotions.js';
 import { appearanceOf, getPersonality } from '../models/Personality.js';
+import { getSettings } from '../models/Settings.js';
 import { chat } from '../services/ai.js';
+import { moodEvent } from '../services/mood.js';
 import { sttEnabled, synthesizeAudio, transcribe, ttsEnabled } from '../services/voice.js';
 
 /*
  * Protocolo robot ⇄ servidor (ver README para el detalle):
- *   Robot → servidor (JSON): hello, listen_start, listen_end, text, touch, motion, ping
+ *   Robot → servidor (JSON): hello, status, log, listen_start, listen_end, text, touch, motion, ping
  *   Robot → servidor (binario): audio PCM 16 kHz / 16 bits / mono entre listen_start y listen_end
- *   Servidor → robot (JSON): welcome, appearance, emotion, action, gesture, transcript, reply, audio_start, audio_end, error, pong
+ *   Servidor → robot (JSON): welcome, appearance, calibration, servo, servo_stop, test, emotion, action, gesture, transcript, reply, audio_start, audio_end, error, pong
  *   Servidor → robot (binario): audio entre audio_start y audio_end (MP3, o PCM 16 bits mono según audio_start.format)
  */
 
@@ -34,6 +36,7 @@ export function listDevices() {
     connectedAt: d.connectedAt,
     lastSeen: d.lastSeen,
     busy: d.busy,
+    status: d.status || null, // lo que reporta el robot (firmware, uptime, WiFi, sensores…)
   }));
 }
 
@@ -110,6 +113,15 @@ async function handleJson(deviceId, device, msg) {
       logEvent(deviceId, 'hello', { firmware: msg.firmware });
       return;
 
+    case 'status':
+      // diagnóstico: el robot reporta su estado cada tanto
+      device.status = { ...msg, type: undefined, at: new Date().toISOString() };
+      return;
+
+    case 'log':
+      logEvent(deviceId, 'log', { message: String(msg.message || '').slice(0, 200) });
+      return;
+
     case 'ping':
       send(ws, { type: 'pong' });
       return;
@@ -156,6 +168,7 @@ async function handleJson(deviceId, device, msg) {
       const emotion = TOUCH_REACTIONS[zone] || 'feliz';
       send(ws, { type: 'emotion', emotion });
       logEvent(deviceId, 'touch', { zone, emotion });
+      moodEvent(zone === 'cabeza' ? 'mimo' : 'tocar');
       return;
     }
 
@@ -166,6 +179,7 @@ async function handleJson(deviceId, device, msg) {
       if (!emotion) return;
       send(ws, { type: 'emotion', emotion });
       logEvent(deviceId, 'motion', { event, emotion });
+      if (event === 'sacudir') moodEvent('sacudir');
       return;
     }
 
@@ -210,6 +224,9 @@ export function attachRobotSocket(server) {
     devices.set(deviceId, device);
     logEvent(deviceId, 'connected');
     send(ws, { type: 'welcome', deviceId, voice: ttsEnabled(), listen: sttEnabled(), inputSampleRate: config.voice.inputSampleRate });
+    getSettings()
+      .then((s) => send(ws, { type: 'calibration', servos: s.servos }))
+      .catch(() => {});
     getPersonality()
       .then((p) => send(ws, { type: 'appearance', ...appearanceOf(p) }))
       .catch((err) => console.error('[robot] no se pudo mandar la apariencia:', err.message));
