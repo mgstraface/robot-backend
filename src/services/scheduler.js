@@ -1,5 +1,6 @@
 // Reloj de las rutinas: una vez por minuto decide si hay que saludar, avisar una reunión,
 // recordar el agua, cerrar el bloque de foco o pegar un susto.
+import { fedeTick } from './fede.js';
 import { frasesTick, futbolTick } from './futbol.js';
 import { fechasAvisos, isHalloween } from './extras.js';
 import { moodTick } from './mood.js';
@@ -68,6 +69,9 @@ export async function tick(now = Date.now()) {
   if (s.futbol) await safely('frases', () => frasesTick({ now, s, sleeping }));
 
   if (sleeping) return;
+
+  // Chiste interno: cada tanto llama a Fede
+  if (!getFocus(now)) await safely('fede', () => fedeTick(now));
 
   // Saludo del día, la primera vez que está despierto
   if (s.morningGreeting && state.greetedDay !== dayKey) {

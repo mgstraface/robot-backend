@@ -115,3 +115,9 @@ test('recetas: formato Robi y texto suelto', async () => {
   assert.deepEqual(parseCommand('siguiente'), { type: 'cocina', accion: 'siguiente' });
   assert.deepEqual(parseCommand('¿Cuánto falta?'), { type: 'cocina', accion: 'faltan' });
 });
+
+test('chiste de Fede: "¿qué?" después de llamarlo remata, y solo una vez', async () => {
+  const { remateFede } = await import('../src/services/fede.js');
+  const { normalize } = await import('../src/services/commands.js');
+  assert.equal(remateFede(normalize('¿Qué?')), null); // sin llamado previo no hace nada
+});

@@ -25,6 +25,7 @@ import { pcmToWav, synthesizeAudio, ttsEnabled } from '../services/voice.js';
 import { VOCES } from '../services/edgeTts.js';
 import { broadcast, listDevices, recentEvents, setEmotion, speak } from '../ws/robotSocket.js';
 import { cocinaParaRobot } from '../ws/robotMenu.js';
+import { llamarFede } from '../services/fede.js';
 
 const router = Router();
 
@@ -438,6 +439,7 @@ const TRIES = {
   'derrota': () => announce({ kind: 'futbol', text: pick('futbolFinal_perdimos', { us: 0, rival: 1, contra: 'Central' }), emotion: 'triste', gesture: 'negar' }),
   'victoria': () =>
     announce({ kind: 'futbol', text: pick('futbolFinal_ganamos', { us: 2, rival: 0, contra: 'Central' }), emotion: 'riendo', actions: ['bandera'], gesture: 'festejar' }),
+  fede: () => llamarFede(),
   'central-perdio': () => announce({ kind: 'futbol', text: pick('futbolCentralPerdio', { contra: 'Boca' }), emotion: 'picaro' }),
   frase: async () => announce({ kind: 'futbol', text: fraseLeprosa(await getSettings()), emotion: 'feliz', actions: ['bandera'], gesture: 'bailar' }),
   gol: () => announce({ kind: 'futbol', text: pick('futbolGol', { us: 1, rival: 0, contra: 'Central' }), emotion: 'riendo', actions: ['gol'], gesture: 'festejar' }),

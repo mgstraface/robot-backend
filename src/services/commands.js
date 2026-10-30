@@ -7,6 +7,7 @@ import { fraseLeprosa, matchAnswer } from './futbol.js';
 import { newellsNews } from './noticias.js';
 import { describeDolar, getDolar } from './extras.js';
 import { cocinaAccion, getCocina } from './cocina.js';
+import { remateFede } from './fede.js';
 import { pick } from './phrases.js';
 import { addReminder, cancelReminders, pendingReminders } from './reminders.js';
 import { describeWeather, getWeather } from './weather.js';
@@ -108,6 +109,9 @@ export function nextAt(hour, minute, tz, now = Date.now()) {
 
 /** Ejecuta el comando si lo hay. Devuelve { text, emotion, gesture } o null. */
 export async function runCommand(text, now = Date.now()) {
+  // chiste interno: si recién gritó "¡FEDE!" y le contestan "¿qué?"
+  const remate = remateFede(normalize(text), now);
+  if (remate) return remate;
   const cmd = parseCommand(text);
   if (!cmd) return null;
   // los comandos de cocina solo valen con una receta en curso; si no, que conteste la IA
