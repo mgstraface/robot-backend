@@ -47,8 +47,9 @@ bool Face::update(uint32_t now) {
     dirty_ = true;
   }
   // vuelve a neutral a los 7 s, como el panel
-  if (!sticky(emotion_) && now - emotionAt_ > 7000) setEmotion("neutral");
-  if (textUntil_ && now > textUntil_) {
+  // (con signo: si la emoción llegó después de tomar "now", la resta no da negativa gigante)
+  if (!sticky(emotion_) && (int32_t)(now - emotionAt_) > 7000) setEmotion("neutral");
+  if (textUntil_ && (int32_t)(now - textUntil_) > 0) {
     textUntil_ = 0;
     text_ = "";
     dirty_ = true;
