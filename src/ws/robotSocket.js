@@ -4,6 +4,7 @@ import { isEmotion, MOTION_REACTIONS, TOUCH_REACTIONS } from '../emotions.js';
 import { appearanceOf, getPersonality } from '../models/Personality.js';
 import { getSettings } from '../models/Settings.js';
 import { chat } from '../services/ai.js';
+import { cocinaAccion, getCocina } from '../services/cocina.js';
 import { moodEvent } from '../services/mood.js';
 import { sttEnabled, synthesizeAudio, transcribe, ttsEnabled } from '../services/voice.js';
 
@@ -165,6 +166,12 @@ async function handleJson(deviceId, device, msg) {
 
     case 'touch': {
       const zone = String(msg.zone || 'cabeza');
+      // cocinando: cabeza = paso siguiente, panza = paso anterior (manos sucias, toque rápido)
+      if (getCocina().activa && (zone === 'cabeza' || zone === 'panza')) {
+        logEvent(deviceId, 'touch', { zone, cocina: zone === 'cabeza' ? 'siguiente' : 'anterior' });
+        await cocinaAccion(zone === 'cabeza' ? 'siguiente' : 'anterior');
+        return;
+      }
       const emotion = TOUCH_REACTIONS[zone] || 'feliz';
       send(ws, { type: 'emotion', emotion });
       logEvent(deviceId, 'touch', { zone, emotion });

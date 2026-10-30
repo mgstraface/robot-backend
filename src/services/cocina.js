@@ -153,7 +153,11 @@ export async function cocinaAccion(accion) {
     }
     await goTo(session.step + 1);
   } else if (accion === 'anterior') {
-    session.step = Math.max(0, session.step - 1);
+    if (session.step <= 0) {
+      await announce({ kind: 'cocina', text: session.step < 0 ? 'Todavía no arrancamos. Tocame la cabeza para empezar.' : 'Ya estás en el primer paso.', emotion: 'confundido' });
+      return getCocina();
+    }
+    session.step -= 1;
     await announce({ kind: 'cocina', text: stepText(session.recipe, session.step), emotion: 'neutral' });
   } else if (accion === 'repetir') {
     await announce({ kind: 'cocina', text: stepText(session.recipe, Math.max(0, session.step)), emotion: 'neutral' });
