@@ -1,0 +1,33 @@
+name: Firmware (compilar)
+
+# Compila el firmware de Robi en cada cambio, para detectar errores antes de cargarlo en la placa.
+on:
+  push:
+    paths: ['firmware/**', '.github/workflows/firmware.yml']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firmware
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ hashFiles('firmware/platformio.ini') }}
+      - run: pip install platformio
+      - name: secrets.h de prueba
+        run: cp include/secrets.example.h include/secrets.h
+      - name: Compilar
+        run: |
+          set -o pipefail
+          pio run 2>&1 | tee build.log
+      - name: Mostrar errores
+        if: failure()
+        run: grep -E "error|Error" build.log | head -30 | while read -r l; do echo "::error::$l"; done

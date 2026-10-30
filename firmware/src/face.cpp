@@ -1,10 +1,10 @@
 #include "face.h"
 
-static const uint16_t BG = 0x0000;
-static const uint16_t WHITE = 0xFFFF;
-static const uint16_t CHEEK = 0xF2B2;   // rosado
-static const uint16_t TEAR = 0x7E3F;    // celeste
-static const uint16_t TONGUE = 0xFB51;
+static const uint16_t C_BG = 0x0000;
+static const uint16_t C_WHITE = 0xFFFF;
+static const uint16_t C_CHEEK = 0xF2B2;   // rosado
+static const uint16_t C_TEAR = 0x7E3F;    // celeste
+static const uint16_t C_TONGUE = 0xFB51;
 
 static const float L = 78, R = 162, Yc = 90;  // centros de los ojos (como en el panel)
 
@@ -74,10 +74,10 @@ void Face::lid(float cx, float inner, float outer, bool left) {
   float yl = left ? outer : inner;
   float yr = left ? inner : outer;
   int x0 = X(cx - 40), x1 = X(cx + 40);
-  g_->fillRect(x0, 0, x1 - x0, Y(top), BG);
-  g_->fillTriangle(x0, Y(top), x1, Y(top), x0, Y(top + yl), BG);
-  g_->fillTriangle(x1, Y(top), x1, Y(top + yr), x0, Y(top + yl), BG);
-  g_->fillTriangle(x0, Y(top + yl), x1, Y(top + yr), x0, Y(top), BG);
+  g_->fillRect(x0, 0, x1 - x0, Y(top), C_BG);
+  g_->fillTriangle(x0, Y(top), x1, Y(top), x0, Y(top + yl), C_BG);
+  g_->fillTriangle(x1, Y(top), x1, Y(top + yr), x0, Y(top + yl), C_BG);
+  g_->fillTriangle(x0, Y(top + yl), x1, Y(top + yr), x0, Y(top), C_BG);
 }
 
 // Curva gruesa (bezier cuadrática) hecha con círculos
@@ -105,7 +105,7 @@ void Face::mouth(const char *kind) {
   else if (!strcmp(kind, "carcajada")) {
     g_->fillRect(X(92), Y(136), 56, 6, eye_);
     g_->fillCircle(X(120), Y(140), 26, eye_);
-    g_->fillRect(X(92), Y(108), 56, 28, BG);  // deja solo la mitad de abajo
+    g_->fillRect(X(92), Y(108), 56, 28, C_BG);  // deja solo la mitad de abajo
   } else if (!strcmp(kind, "ondulada")) {
     for (int i = 0; i < 4; i++) thickQuad(96 + i * 12, 148, 102 + i * 12, 142 - (i % 2) * 0, 108 + i * 12, 148, 2, eye_);
   } else if (!strcmp(kind, "grr")) {
@@ -120,14 +120,14 @@ void Face::heart(float cx, float cy) {
 }
 
 void Face::draw(uint32_t now) {
-  g_->fillScreen(BG);
+  g_->fillScreen(C_BG);
   const String &e = emotion_;
 
   if (e == "feliz") {
     thickQuad(L - 22, Yc + 8, L, Yc - 26, L + 22, Yc + 8, 4.5, eye_);
     thickQuad(R - 22, Yc + 8, R, Yc - 26, R + 22, Yc + 8, 4.5, eye_);
-    g_->fillEllipse(X(L - 18), Y(Yc + 30), 12, 6, CHEEK);
-    g_->fillEllipse(X(R + 18), Y(Yc + 30), 12, 6, CHEEK);
+    g_->fillEllipse(X(L - 18), Y(Yc + 30), 12, 6, C_CHEEK);
+    g_->fillEllipse(X(R + 18), Y(Yc + 30), 12, 6, C_CHEEK);
     mouth("sonrisa");
   } else if (e == "triste") {
     eye(L, 40, 48, 6);
@@ -147,8 +147,8 @@ void Face::draw(uint32_t now) {
     int jitter = e == "asustado" ? (int)((now / 60) % 3) - 1 : 0;
     g_->fillCircle(X(L) + jitter, Y(Yc), r, eye_);
     g_->fillCircle(X(R) + jitter, Y(Yc), r, eye_);
-    g_->fillCircle(X(L) + jitter, Y(Yc), p, BG);
-    g_->fillCircle(X(R) + jitter, Y(Yc), p, BG);
+    g_->fillCircle(X(L) + jitter, Y(Yc), p, C_BG);
+    g_->fillCircle(X(R) + jitter, Y(Yc), p, C_BG);
     mouth(e == "asustado" ? "ondulada" : "o");
   } else if (e == "pensando") {
     eye(L, 36, 44, -10, 8);
@@ -194,14 +194,14 @@ void Face::draw(uint32_t now) {
       thickQuad(cx + 16, Yc - 16, cx, Yc, cx - 16, Yc + 16, 4, eye_);
     }
     g_->fillRoundRect(X(104), Y(140), 42, 5, 2, eye_);
-    g_->fillRoundRect(X(128), Y(142), 14, 16, 6, TONGUE);
+    g_->fillRoundRect(X(128), Y(142), 14, 16, 6, C_TONGUE);
   } else if (e == "llorando") {
     thickQuad(L - 20, Yc, L, Yc - 14, L + 20, Yc, 4, eye_);
     thickQuad(R - 20, Yc, R, Yc - 14, R + 20, Yc, 4, eye_);
     int off = (now / 60) % 18;
     for (int y = 6 + off; y < 76; y += 18) {
-      g_->fillRoundRect(X(L - 7), Y(Yc + y), 5, 8, 2, TEAR);
-      g_->fillRoundRect(X(R + 3), Y(Yc + y), 5, 8, 2, TEAR);
+      g_->fillRoundRect(X(L - 7), Y(Yc + y), 5, 8, 2, C_TEAR);
+      g_->fillRoundRect(X(R + 3), Y(Yc + y), 5, 8, 2, C_TEAR);
     }
     mouth("ondulada");
   } else {
@@ -216,8 +216,8 @@ void Face::draw(uint32_t now) {
   }
 
   if (text_.length()) {
-    g_->fillRect(0, 150, 320, 22, BG);
-    g_->setTextColor(WHITE);
+    g_->fillRect(0, 150, 320, 22, C_BG);
+    g_->setTextColor(C_WHITE);
     g_->setTextSize(1);
     g_->setCursor(8, 158);
     g_->print(text_.substring(0, 50));
