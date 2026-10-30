@@ -6,9 +6,11 @@ import { Message } from '../models/Message.js';
 import { isJpeg, MAX_PHOTO_BYTES, MAX_PHOTOS, Photo } from '../models/Photo.js';
 import { appearanceOf, FACE_STYLES, getPersonality, updatePersonality } from '../models/Personality.js';
 import { getSettings, publicSettings, sanitizeSettings, SERVO_NAMES, updateSettings } from '../models/Settings.js';
-import { chat } from '../services/ai.js';
+import { callModel, chat } from '../services/ai.js';
 import { announce, feedAfter } from '../services/announce.js';
 import { pick } from '../services/phrases.js';
+import { cocinaAccion, FORMATO_EJEMPLO, getCocina, parseRecipe, PROMPT_PARA_IA, Recipe, startCocina, stopCocina } from '../services/cocina.js';
+import { addReminder, cancelReminders, pendingReminders } from '../services/reminders.js';
 import { getMood, moodEvent } from '../services/mood.js';
 import { listMemories, Memory, remember } from '../services/memory.js';
 import { isHalloween } from '../services/extras.js';
@@ -281,6 +283,74 @@ router.delete('/focus', (req, res) => {
   stopFocus();
   res.json({ focus: null });
 });
+
+// ---------- Cocina
+router.get('/recetas/formato', (req, res) => res.json({ ejemplo: FORMATO_EJEMPLO, prompt: PROMPT_PARA_IA }));
+router.get('/recetas', asyncRoute(async (req, res) => res.json(await Recipe.find().sort({ updatedAt: -1 }).lean())));
+router.post(
+  '/recetas',
+  asyncRoute(async (req, res) => {
+    const { text, nombre, conIA } = req.body || {};
+    let source = String(text || '').trim();
+    if (!source) return res.status(400).json({ error: 'Pegá la receta' });
+    if (conIA) {
+      // una sola llamada chiquita: pasa cualquier receta al formato Robi
+      source = await callModel({
+        system: `Convertís recetas al formato de texto que usa un robot de cocina. Respondé SOLO con la receta en este formato:\n\n${FORMATO_EJEMPLO}\n\nUn paso por línea; tiempos de espera entre corchetes ([10 min]); después de "|" un aviso corto para cuando termine el tiempo. Español rioplatense.`,
+        messages: [{ role: 'user', content: source.slice(0, 6000) }],
+        maxTokens: 1200,
+      });
+    }
+    const r = parseRecipe(source);
+    if (nombre) r.nombre = String(nombre).trim().slice(0, 120);
+    if (!r.pasos.length) return res.status(400).json({ error: 'No encontré pasos en la receta' });
+    res.json(await Recipe.create(r));
+  })
+);
+router.delete(
+  '/recetas/:id',
+  asyncRoute(async (req, res) => {
+    await Recipe.deleteOne({ _id: req.params.id });
+    res.json({ ok: true });
+  })
+);
+router.get('/cocina', (req, res) => res.json(getCocina()));
+router.post(
+  '/cocina/start',
+  asyncRoute(async (req, res) => {
+    const r = await Recipe.findById(req.body?.recetaId).lean();
+    if (!r) return res.status(404).json({ error: 'Receta no encontrada' });
+    res.json(await startCocina(r));
+  })
+);
+router.post(
+  '/cocina/:accion',
+  asyncRoute(async (req, res) => {
+    const { accion } = req.params;
+    if (accion === 'stop') return res.json(stopCocina());
+    if (!['siguiente', 'anterior', 'repetir', 'faltan'].includes(accion)) return res.status(400).json({ error: 'Acción inválida' });
+    res.json(await cocinaAccion(accion));
+  })
+);
+
+// ---------- Temporizadores sueltos (los mismos de "avisame en 10 minutos")
+router.get('/timers', asyncRoute(async (req, res) => res.json(await pendingReminders())));
+router.post(
+  '/timers',
+  asyncRoute(async (req, res) => {
+    const seg = Math.round(Number(req.body?.segundos));
+    if (!Number.isFinite(seg) || seg < 5 || seg > 24 * 3600) return res.status(400).json({ error: 'Tiempo inválido' });
+    await addReminder({ at: new Date(Date.now() + seg * 1000), kind: 'timer', text: String(req.body?.texto || '').slice(0, 120) });
+    res.json(await pendingReminders());
+  })
+);
+router.delete(
+  '/timers',
+  asyncRoute(async (req, res) => {
+    await cancelReminders();
+    res.json([]);
+  })
+);
 
 // ---------- Calibración y diagnóstico del robot
 router.post('/robot/servo', (req, res) => {

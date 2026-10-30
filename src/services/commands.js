@@ -6,6 +6,7 @@ import { startFocus } from './focus.js';
 import { fraseLeprosa, matchAnswer } from './futbol.js';
 import { newellsNews } from './noticias.js';
 import { describeDolar, getDolar } from './extras.js';
+import { cocinaAccion, getCocina } from './cocina.js';
 import { pick } from './phrases.js';
 import { addReminder, cancelReminders, pendingReminders } from './reminders.js';
 import { describeWeather, getWeather } from './weather.js';
@@ -73,6 +74,10 @@ export function parseCommand(text) {
   if (/(^|\b(me decis|decime|sabes) )que (dia|fecha) es( hoy)?$/.test(t)) return { type: 'fecha' };
   if (t.length < 60 && /\b(clima|temperatura|llueve|llover|lluvia|hace frio|hace calor|como esta el dia)\b/.test(t)) return { type: 'clima' };
   if (/\b(conta|contame|deci|decime|tira|tirame)( un| otro)? chiste\b/.test(t)) return { type: 'chiste' };
+  if (/^(siguiente|siguiente paso|proximo paso|el que sigue|dale(,)? siguiente|listo(,)? siguiente)$/.test(t)) return { type: 'cocina', accion: 'siguiente' };
+  if (/^(anterior|paso anterior|volve un paso)$/.test(t)) return { type: 'cocina', accion: 'anterior' };
+  if (/^(repeti|repetime|repetilo|repeti el paso|que paso era|como era)$/.test(t)) return { type: 'cocina', accion: 'repetir' };
+  if (/^(cuanto falta|cuanto le falta|cuanto queda)$/.test(t)) return { type: 'cocina', accion: 'faltan' };
   if (t.length < 60 && /\b(dolar|dolares|blue|cotizacion)\b/.test(t)) return { type: 'dolar' };
   if (/\b(noticia|noticias|novedad|novedades|que se dice|que hay de nuevo)\b/.test(t) && /\b(newell|newells|nob|lepra)\b/.test(t)) return { type: 'noticia' };
   if (/\b(canta|cantame|cantate|tira|tirame|deci|decime)\b.*\b(leprosa|lepra|newell|newells|cancion|cantito)\b/.test(t)) return { type: 'leprosa' };
@@ -105,6 +110,12 @@ export function nextAt(hour, minute, tz, now = Date.now()) {
 export async function runCommand(text, now = Date.now()) {
   const cmd = parseCommand(text);
   if (!cmd) return null;
+  // los comandos de cocina solo valen con una receta en curso; si no, que conteste la IA
+  if (cmd.type === 'cocina') {
+    if (!getCocina().activa) return null;
+    await cocinaAccion(cmd.accion);
+    return { text: 'Dale.', emotion: 'feliz', gesture: 'asentir' };
+  }
   const s = await getSettings();
   const tz = s.timezone;
   switch (cmd.type) {

@@ -99,3 +99,19 @@ test('dólar y Halloween', async () => {
   assert.equal(isHalloween(Date.UTC(2026, 10, 1, 2, 0)), true); // 23 h del 31 en Argentina
   assert.equal(isHalloween(Date.UTC(2026, 9, 30, 15, 0)), false);
 });
+
+test('recetas: formato Robi y texto suelto', async () => {
+  const { parseRecipe, FORMATO_EJEMPLO } = await import('../src/services/cocina.js');
+  const r = parseRecipe(FORMATO_EJEMPLO);
+  assert.equal(r.nombre, 'Fideos con tuco');
+  assert.equal(r.porciones, '2');
+  assert.equal(r.ingredientes.length, 4);
+  assert.equal(r.pasos.length, 5);
+  assert.deepEqual(r.pasos[0], { texto: 'Picar la cebolla y rehogarla con un chorrito de aceite', segundos: 300, aviso: 'Revolvé la cebolla que no se queme' });
+  assert.equal(r.pasos[4].segundos, null);
+  const suelta = parseRecipe('Poner a hervir el agua\nEchar los fideos [10 min]\nColar [30 seg]\nHornear [1 h 15 min]');
+  assert.equal(suelta.pasos.length, 4);
+  assert.deepEqual(suelta.pasos.map((p) => p.segundos), [null, 600, 30, 4500]);
+  assert.deepEqual(parseCommand('siguiente'), { type: 'cocina', accion: 'siguiente' });
+  assert.deepEqual(parseCommand('¿Cuánto falta?'), { type: 'cocina', accion: 'faltan' });
+});
