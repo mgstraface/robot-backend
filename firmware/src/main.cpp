@@ -157,7 +157,7 @@ void onServerMessage(const char *payload, size_t length) {
   } else if (!strcmp(type, "gesture")) {
     Serial.printf("[gesto] %s (servos: etapa 4)\n", (const char *)(msg["gesture"] | ""));
   } else if (!strcmp(type, "action")) {
-    Serial.printf("[acción] %s\n", (const char *)(msg["action"] | ""));
+    face.playAction(String(msg["action"] | ""), String(msg["weather"] | ""));
   } else if (!strcmp(type, "test")) {
     String what = msg["what"] | "";
     if (what == "reiniciar") ESP.restart();

@@ -11,6 +11,8 @@ class Face {
   void setTerror(bool terror) { terror_ = terror; dirty_ = true; }
   void setTalking(bool talking) { talking_ = talking; }
   void showText(const String &text, uint32_t ms);  // cartelito abajo (estado, avisos)
+  // Acciones especiales con animación propia: gol, bandera, risa, lagrima, apagon, tercerOjo, colmillos, clima
+  void playAction(const String &name, const String &extra = "");
   // Llamar seguido en loop(): anima parpadeo, boca y vuelve a neutral solo. Devuelve true si redibujó.
   bool update(uint32_t now);
   const String &emotion() const { return emotion_; }
@@ -26,6 +28,11 @@ class Face {
   void thickQuad(float x0, float y0, float cx, float cy, float x1, float y1, float r, uint16_t c);
   void mouth(const char *kind);
   void heart(float cx, float cy);
+  bool animated() const;
+  void drawAction(uint32_t now);
+  void terrorEyes();
+  void fangs(float open);
+  void cloud(float cx, float cy, uint16_t c);
 
   Arduino_GFX *g_ = nullptr;
   String emotion_ = "neutral";
@@ -38,6 +45,9 @@ class Face {
   uint32_t blinkEnd_ = 0;
   uint32_t emotionAt_ = 0;
   uint32_t lastFrame_ = 0;
+  String action_, actionExtra_;
+  uint32_t actionStart_ = 0;
+  uint32_t actionUntil_ = 0;
   String text_;
   uint32_t textUntil_ = 0;
 };

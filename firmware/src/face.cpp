@@ -5,6 +5,13 @@ static const uint16_t C_WHITE = 0xFFFF;
 static const uint16_t C_CHEEK = 0xF2B2;   // rosado
 static const uint16_t C_TEAR = 0x7E3F;    // celeste
 static const uint16_t C_TONGUE = 0xFB51;
+static const uint16_t C_RED = 0xD003;     // rojo Newell's
+static const uint16_t C_DARK = 0x2104;    // "negro" que se ve sobre el fondo negro
+static const uint16_t C_BLOOD = 0xB800;
+static const uint16_t C_MAW = 0x3000;
+static const uint16_t C_YELLOW = 0xFE60;
+static const uint16_t C_GRAY = 0xBDF7;
+static const uint16_t C_BLUE = 0x5D7F;
 
 static const float L = 78, R = 162, Yc = 90;  // centros de los ojos (como en el panel)
 
@@ -35,7 +42,45 @@ void Face::showText(const String &text, uint32_t ms) {
   dirty_ = true;
 }
 
+// Duración de cada acción (las mismas que el panel)
+static uint32_t actionMs(const String &a) {
+  if (a == "gol") return 5000;
+  if (a == "bandera") return 4500;
+  if (a == "risa") return 3600;
+  if (a == "lagrima") return 4000;
+  if (a == "apagon") return 3200;
+  if (a == "tercerOjo") return 3800;
+  if (a == "colmillos" || a == "mordisco") return 3000;
+  if (a == "clima") return 5200;
+  return 0;  // desconocida: no se hace
+}
+
+void Face::playAction(const String &name, const String &extra) {
+  String a = name, x = extra;
+  int colon = a.indexOf(':');  // "clima:lluvia"
+  if (colon >= 0) {
+    if (!x.length()) x = a.substring(colon + 1);
+    a = a.substring(0, colon);
+  }
+  uint32_t ms = actionMs(a);
+  if (!ms) return;
+  action_ = a;
+  actionExtra_ = x;
+  actionStart_ = millis();
+  actionUntil_ = actionStart_ + ms;
+  dirty_ = true;
+}
+
+// Caras que se mueven solas (hay que redibujarlas seguido)
+bool Face::animated() const {
+  return action_.length() || emotion_ == "llorando" || emotion_ == "asustado" || emotion_ == "pensando";
+}
+
 bool Face::update(uint32_t now) {
+  if (action_.length() && (int32_t)(now - actionUntil_) > 0) {
+    action_ = "";
+    dirty_ = true;
+  }
   // parpadeo
   if (!blinking_ && now >= nextBlink_) {
     blinking_ = true;
@@ -56,6 +101,7 @@ bool Face::update(uint32_t now) {
   }
   // la boca que habla se anima sola (~12 cuadros por segundo)
   if (talking_ && now - lastFrame_ > 80) dirty_ = true;
+  if (animated() && now - lastFrame_ > 40) dirty_ = true;  // ~25 cuadros por segundo
   if (!dirty_) return false;
   draw(now);
   lastFrame_ = now;
@@ -120,9 +166,131 @@ void Face::heart(float cx, float cy) {
   g_->fillTriangle(X(cx - 22), Y(cy - 2), X(cx + 22), Y(cy - 2), X(cx), Y(cy + 22), eye_);
 }
 
+void Face::terrorEyes() {
+  eye(L);
+  eye(R);
+  lid(L, 20, 6, true);
+  lid(R, 20, 6, false);
+}
+
+// Boca con dientes y colmillos; open de 0 (cerrada) a 1 (bien abierta)
+void Face::fangs(float open) {
+  float h = 10 + 26 * open;
+  g_->fillRect(X(72), Y(132), 96, (int)(h * 0.5f), C_MAW);
+  g_->fillEllipse(X(120), Y(132 + h * 0.5f), 48, (int)(h * 0.5f), C_MAW);
+  for (int x = 82; x <= 152; x += 10) {
+    if (x == 92 || x == 142) continue;
+    g_->fillTriangle(X(x), Y(134), X(x + 5), Y(141), X(x + 10), Y(134), C_WHITE);
+  }
+  g_->fillTriangle(X(90), Y(133), X(97), Y(152), X(104), Y(133), C_WHITE);
+  g_->fillTriangle(X(136), Y(133), X(143), Y(152), X(150), Y(133), C_WHITE);
+}
+
+void Face::cloud(float cx, float cy, uint16_t c) {
+  g_->fillCircle(X(cx - 10), Y(cy + 2), 9, c);
+  g_->fillCircle(X(cx + 2), Y(cy - 4), 12, c);
+  g_->fillCircle(X(cx + 13), Y(cy + 3), 8, c);
+  g_->fillRect(X(cx - 10), Y(cy + 2), 23, 9, c);
+}
+
+void Face::drawAction(uint32_t now) {
+  uint32_t t = now - actionStart_;
+  const String &a = action_;
+
+  if (a == "gol") {
+    // rayas rojinegras que bajan y se deslizan, ojos > < saltando y GOOOL
+    int h = (int)(172 * min(1.0f, t / 500.0f));
+    int off = (t / 25) % 40;
+    for (int i = -1; i < 9; i++) g_->fillRect(i * 40 + off, 0, 20, h, C_RED);
+    float b = sinf(t / 120.0f) * 6;
+    thickQuad(L - 18, Yc - 30 + b, L - 4, Yc - 24 + b, L + 10, Yc - 18 + b, 4, eye_);
+    thickQuad(L + 10, Yc - 18 + b, L - 4, Yc - 12 + b, L - 18, Yc - 6 + b, 4, eye_);
+    thickQuad(R + 18, Yc - 30 + b, R + 4, Yc - 24 + b, R - 10, Yc - 18 + b, 4, eye_);
+    thickQuad(R - 10, Yc - 18 + b, R + 4, Yc - 12 + b, R + 18, Yc - 6 + b, 4, eye_);
+    g_->setTextSize(5);
+    int y = Y(150) - 34 + (int)b;
+    g_->setTextColor(C_BG);
+    g_->setCursor(87, y + 3);
+    g_->print("GOOOL");
+    g_->setTextColor(C_WHITE);
+    g_->setCursor(85, y);
+    g_->print("GOOOL");
+  } else if (a == "bandera") {
+    // bandera rojinegra flameando
+    for (int x = 40; x < 200; x += 4) {
+      float w = sinf(x / 18.0f - t / 140.0f) * 5;
+      g_->fillRect(X(x), Y(40 + w), 4, 100, x < 120 ? C_RED : C_DARK);
+    }
+    thickQuad(100, 158, 120, 170, 140, 158, 3, eye_);
+  } else if (a == "risa") {
+    eye(L);
+    eye(R);
+    lid(L, 30, 18, true);
+    lid(R, 30, 18, false);
+    fangs(0.5f + 0.5f * sinf(t / 90.0f));
+  } else if (a == "colmillos" || a == "mordisco") {
+    terrorEyes();
+    fangs(0.4f + 0.6f * fabsf(sinf(t / 150.0f)));
+  } else if (a == "lagrima") {
+    terrorEyes();
+    float y = 106 + (t % 1600) / 1600.0f * 60;
+    g_->fillTriangle(X(74), Y(y + 8), X(82), Y(y + 8), X(78), Y(y - 2), C_BLOOD);
+    g_->fillCircle(X(78), Y(y + 9), 4, C_BLOOD);
+  } else if (a == "apagon") {
+    // la luz titila, se corta y vuelve
+    bool on;
+    if (t < 2200) on = (((t / 110) * 2654435761u) >> 29) != 0;
+    else on = t > 2800;
+    if (on) terrorEyes();
+  } else if (a == "tercerOjo") {
+    terrorEyes();
+    uint32_t ms = actionUntil_ - actionStart_;
+    // se abre al principio y se cierra al final
+    uint32_t edge = min(t, ms > t ? ms - t : 0);
+    float open = min(1.0f, edge / 500.0f);
+    if (open > 0.05f) {
+      g_->fillEllipse(X(120), Y(30), 16, max(1, (int)(11 * open)), eye_);
+      g_->fillEllipse(X(120), Y(30), 3, max(1, (int)(9 * open)), C_BG);
+    }
+  } else if (a == "clima") {
+    eye(L, 36, 42, 22);
+    eye(R, 36, 42, 22);
+    const String &k = actionExtra_;
+    if (k == "despejado" || k == "parcial" || !k.length()) {
+      float rot = t / 900.0f;
+      for (int i = 0; i < 8; i++) {
+        float ang = rot + i * 0.785f;
+        g_->drawLine(X(120 + cosf(ang) * 18), Y(34 + sinf(ang) * 18), X(120 + cosf(ang) * 24), Y(34 + sinf(ang) * 24), C_YELLOW);
+      }
+      g_->fillCircle(X(120), Y(34), 13, C_YELLOW);
+      if (k == "parcial") cloud(132, 42, C_GRAY);
+    } else if (k == "niebla") {
+      for (int i = 0; i < 4; i++) g_->fillRoundRect(X(92 + (i % 2) * 8), Y(20 + i * 9), 48, 4, 2, C_GRAY);
+    } else {
+      cloud(118, 28, C_GRAY);
+      if (k == "lluvia" || k == "tormenta" || k == "nieve") {
+        for (int i = 0; i < 4; i++) {
+          int y = 44 + (int)((t / 30 + i * 7) % 20);
+          int x = 106 + i * 9;
+          if (k == "nieve") g_->fillCircle(X(x), Y(y), 2, C_WHITE);
+          else g_->fillRect(X(x), Y(y), 2, 6, C_BLUE);
+        }
+      }
+      if (k == "tormenta" && (t / 300) % 3 == 0) {
+        g_->fillTriangle(X(120), Y(36), X(112), Y(54), X(122), Y(52), C_YELLOW);
+        g_->fillTriangle(X(122), Y(48), X(114), Y(66), X(126), Y(50), C_YELLOW);
+      }
+    }
+  }
+}
+
 void Face::draw(uint32_t now) {
   g_->fillScreen(C_BG);
   const String &e = emotion_;
+
+  if (action_.length()) {
+    drawAction(now);
+  } else
 
   if (e == "feliz") {
     thickQuad(L - 22, Yc + 8, L, Yc - 26, L + 22, Yc + 8, 4.5, eye_);
