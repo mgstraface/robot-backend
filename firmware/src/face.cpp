@@ -1,5 +1,7 @@
 #include "face.h"
 
+#include "text.h"
+
 static const uint16_t C_BG = 0x0000;
 static const uint16_t C_WHITE = 0xFFFF;
 static const uint16_t C_CHEEK = 0xF2B2;   // rosado
@@ -37,7 +39,7 @@ void Face::setEmotion(const String &emotion) {
 }
 
 void Face::showText(const String &text, uint32_t ms) {
-  text_ = text;
+  text_ = sinTildes(text);
   textUntil_ = millis() + ms;
   dirty_ = true;
 }
@@ -77,6 +79,11 @@ bool Face::animated() const {
 }
 
 bool Face::update(uint32_t now) {
+  if (glanceUntil_ && (int32_t)(now - glanceUntil_) > 0) {
+    glanceUntil_ = 0;
+    glanceDx_ = 0;
+    dirty_ = true;
+  }
   if (action_.length() && (int32_t)(now - actionUntil_) > 0) {
     action_ = "";
     dirty_ = true;
@@ -112,6 +119,7 @@ bool Face::update(uint32_t now) {
 void Face::eye(float cx, float w, float h, float dy, float dx) {
   if (blinking_) h = max(4.0f, h * 0.08f);
   float r = min(18.0f, w / 2);
+  dx += glanceDx_;
   g_->fillRoundRect(X(cx - w / 2 + dx), Y(Yc - h / 2 + dy), (int)w, (int)h, (int)min(r, h / 2), eye_);
 }
 
@@ -382,6 +390,13 @@ void Face::draw(uint32_t now) {
       lid(R, 20, 6, false);
     }
     mouth(nullptr);
+  }
+
+  if (badge_.length()) {
+    g_->setTextSize(2);
+    g_->setTextColor(0xF52A);
+    g_->setCursor(320 - 14 - badge_.length() * 12, 10);
+    g_->print(badge_);
   }
 
   if (text_.length()) {

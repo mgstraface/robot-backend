@@ -6,13 +6,14 @@ import { getSettings } from '../models/Settings.js';
 import { chat } from '../services/ai.js';
 import { cocinaAccion, getCocina } from '../services/cocina.js';
 import { moodEvent } from '../services/mood.js';
+import { cocinaParaRobot, handleMenu } from './robotMenu.js';
 import { sttEnabled, synthesizeAudio, transcribe, ttsEnabled } from '../services/voice.js';
 
 /*
  * Protocolo robot ⇄ servidor (ver README para el detalle):
- *   Robot → servidor (JSON): hello, status, log, listen_start, listen_end, text, touch, motion, ping
+ *   Robot → servidor (JSON): hello, status, log, listen_start, listen_end, text, touch, motion, menu, ping
  *   Robot → servidor (binario): audio PCM 16 kHz / 16 bits / mono entre listen_start y listen_end
- *   Servidor → robot (JSON): welcome, appearance, calibration, servo, servo_stop, test, emotion, action, gesture, transcript, reply, audio_start, audio_end, error, pong
+ *   Servidor → robot (JSON): welcome, appearance, calibration, servo, servo_stop, test, emotion, action, gesture, transcript, reply, cocina, recetas, audio_start, audio_end, error, pong
  *   Servidor → robot (binario): audio entre audio_start y audio_end (MP3, o PCM 16 bits mono según audio_start.format)
  */
 
@@ -170,6 +171,7 @@ async function handleJson(deviceId, device, msg) {
       if (getCocina().activa && (zone === 'cabeza' || zone === 'panza')) {
         logEvent(deviceId, 'touch', { zone, cocina: zone === 'cabeza' ? 'siguiente' : 'anterior' });
         await cocinaAccion(zone === 'cabeza' ? 'siguiente' : 'anterior');
+        broadcast(cocinaParaRobot());
         return;
       }
       const emotion = TOUCH_REACTIONS[zone] || 'feliz';
@@ -178,6 +180,10 @@ async function handleJson(deviceId, device, msg) {
       moodEvent(zone === 'cabeza' ? 'mimo' : 'tocar');
       return;
     }
+
+    case 'menu':
+      await handleMenu(msg, (payload) => send(ws, payload), broadcast);
+      return;
 
     case 'motion': {
       // El robot ya reacciona solo; acá se registra y se le confirma la cara
@@ -234,6 +240,7 @@ export function attachRobotSocket(server) {
     getSettings()
       .then((s) => send(ws, { type: 'calibration', servos: s.servos }))
       .catch(() => {});
+    send(ws, cocinaParaRobot());
     getPersonality()
       .then((p) => send(ws, { type: 'appearance', ...appearanceOf(p) }))
       .catch((err) => console.error('[robot] no se pudo mandar la apariencia:', err.message));

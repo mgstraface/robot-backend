@@ -24,6 +24,7 @@ import { DAY } from '../time.js';
 import { pcmToWav, synthesizeAudio, ttsEnabled } from '../services/voice.js';
 import { VOCES } from '../services/edgeTts.js';
 import { broadcast, listDevices, recentEvents, setEmotion, speak } from '../ws/robotSocket.js';
+import { cocinaParaRobot } from '../ws/robotMenu.js';
 
 const router = Router();
 
@@ -320,16 +321,24 @@ router.post(
   asyncRoute(async (req, res) => {
     const r = await Recipe.findById(req.body?.recetaId).lean();
     if (!r) return res.status(404).json({ error: 'Receta no encontrada' });
-    res.json(await startCocina(r));
+    const c = await startCocina(r);
+    broadcast(cocinaParaRobot());
+    res.json(c);
   })
 );
 router.post(
   '/cocina/:accion',
   asyncRoute(async (req, res) => {
     const { accion } = req.params;
-    if (accion === 'stop') return res.json(stopCocina());
+    if (accion === 'stop') {
+      const c = stopCocina();
+      broadcast(cocinaParaRobot());
+      return res.json(c);
+    }
     if (!['siguiente', 'anterior', 'repetir', 'faltan'].includes(accion)) return res.status(400).json({ error: 'Acción inválida' });
-    res.json(await cocinaAccion(accion));
+    const c = await cocinaAccion(accion);
+    broadcast(cocinaParaRobot());
+    res.json(c);
   })
 );
 

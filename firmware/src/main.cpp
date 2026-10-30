@@ -8,10 +8,13 @@
 #include <WebSocketsClient.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
+#include <Wire.h>
 #include <esp_system.h>
 
 #include "config.h"
 #include "face.h"
+#include "touch.h"
+#include "ui.h"
 
 #if __has_include("secrets.h")
 #include "secrets.h"
@@ -125,6 +128,8 @@ static void jd9853Init() {
 }
 
 Face face;
+Touch touch;
+UI ui;
 WebSocketsClient ws;
 WiFiMulti wifiMulti;  // varias redes: se conecta a la que encuentre
 bool wsConnected = false;
@@ -167,6 +172,8 @@ void onServerMessage(const char *payload, size_t length) {
     }
   } else if (!strcmp(type, "calibration") || !strcmp(type, "servo") || !strcmp(type, "servo_stop")) {
     Serial.printf("[servos] %s (se conectan en la etapa 4)\n", type);
+  } else if (!strcmp(type, "cocina") || !strcmp(type, "recetas")) {
+    ui.onServer(msg);
   } else if (!strcmp(type, "error")) {
     Serial.printf("[servidor] error: %s\n", (const char *)(msg["message"] | ""));
   }
@@ -202,6 +209,7 @@ void onWsEvent(WStype_t type, uint8_t *payload, size_t length) {
   switch (type) {
     case WStype_CONNECTED: {
       wsConnected = true;
+      ui.setOnline(true);
       Serial.println("[ws] conectado");
       JsonDocument hello;
       hello["type"] = "hello";
@@ -213,6 +221,7 @@ void onWsEvent(WStype_t type, uint8_t *payload, size_t length) {
     case WStype_DISCONNECTED:
       if (wsConnected) face.showText("Sin conexion con el servidor...", 4000);
       wsConnected = false;
+      ui.setOnline(false);
       Serial.println("[ws] desconectado");
       break;
     case WStype_ERROR:
@@ -243,10 +252,6 @@ void setup() {
   delay(300);
   Serial.printf("\nRobi firmware %s\n", FIRMWARE_VERSION);
 
-  if (PIN_LCD_BL >= 0) {
-    pinMode(PIN_LCD_BL, OUTPUT);
-    digitalWrite(PIN_LCD_BL, HIGH);
-  }
   if (!canvas->begin(40000000)) Serial.println("[pantalla] no arrancó: revisar pines en include/config.h");
   jd9853Init();
   panel->setRotation(1);  // apaisada: 320x172
@@ -254,6 +259,9 @@ void setup() {
   canvas->flush();
 
   face.begin(canvas);
+  ui.begin(canvas, &face, sendJson);  // también prende la luz de fondo (con el brillo guardado)
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+  touch.begin();
   face.showText("Conectando al WiFi...", 15000);
   face.update(millis());
   canvas->flush();
@@ -285,6 +293,7 @@ void loop() {
       wifiShown = true;
       Serial.printf("[wifi] conectado a %s, IP %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
       face.showText("WiFi OK, buscando al servidor...", 4000);
+      configTzTime("<-03>3", "pool.ntp.org", "time.google.com");  // hora de Argentina
     }
     ws.loop();
     if (wsConnected && now - lastPing > 30000) {
@@ -305,6 +314,13 @@ void loop() {
   }
 
   // Aunque no haya conexión, la cara sigue viva (parpadea, vuelve a neutral)
-  if (face.update(now)) canvas->flush();
+  touch.poll(now, ui);
+  face.setBadge(ui.badge(now));
+  if (ui.showing()) {
+    if (ui.update(now)) canvas->flush();
+  } else {
+    ui.update(now);
+    if (face.update(now)) canvas->flush();
+  }
   delay(5);
 }

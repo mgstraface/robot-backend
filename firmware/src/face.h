@@ -10,6 +10,12 @@ class Face {
   void setColor(uint16_t color) { eye_ = color; dirty_ = true; }
   void setTerror(bool terror) { terror_ = terror; dirty_ = true; }
   void setTalking(bool talking) { talking_ = talking; }
+  uint16_t color() const { return eye_; }
+  void invalidate() { dirty_ = true; }
+  // mira hacia un costado un rato (dx en píxeles: negativo = izquierda)
+  void glance(int dx, uint32_t ms) { glanceDx_ = constrain(dx, -20, 20); glanceUntil_ = millis() + ms; dirty_ = true; }
+  // cuenta regresiva chiquita arriba a la derecha ("" = nada)
+  void setBadge(const String &b) { if (b != badge_) { badge_ = b; dirty_ = true; } }
   void showText(const String &text, uint32_t ms);  // cartelito abajo (estado, avisos)
   // Acciones especiales con animación propia: gol, bandera, risa, lagrima, apagon, tercerOjo, colmillos, clima
   void playAction(const String &name, const String &extra = "");
@@ -48,6 +54,9 @@ class Face {
   String action_, actionExtra_;
   uint32_t actionStart_ = 0;
   uint32_t actionUntil_ = 0;
+  int glanceDx_ = 0;
+  uint32_t glanceUntil_ = 0;
+  String badge_;
   String text_;
   uint32_t textUntil_ = 0;
 };
