@@ -5,15 +5,16 @@ import { appearanceOf, getPersonality } from '../models/Personality.js';
 import { getSettings } from '../models/Settings.js';
 import { chat } from '../services/ai.js';
 import { cocinaAccion, getCocina } from '../services/cocina.js';
+import { latestFirmware } from '../services/firmware.js';
 import { moodEvent } from '../services/mood.js';
 import { cocinaParaRobot, handleMenu } from './robotMenu.js';
 import { sttEnabled, synthesizeAudio, transcribe, ttsEnabled } from '../services/voice.js';
 
 /*
  * Protocolo robot ⇄ servidor (ver README para el detalle):
- *   Robot → servidor (JSON): hello, status, log, listen_start, listen_end, text, touch, motion, menu, ping
+ *   Robot → servidor (JSON): hello, status, log, listen_start, listen_end, text, touch, motion, menu, ota_status, ping
  *   Robot → servidor (binario): audio PCM 16 kHz / 16 bits / mono entre listen_start y listen_end
- *   Servidor → robot (JSON): welcome, appearance, calibration, servo, servo_stop, test, emotion, action, gesture, transcript, reply, cocina, recetas, audio_start, audio_end, error, pong
+ *   Servidor → robot (JSON): welcome, appearance, calibration, servo, servo_stop, test, emotion, action, gesture, transcript, reply, cocina, recetas, talking, ota, audio_start, audio_end, error, pong
  *   Servidor → robot (binario): audio entre audio_start y audio_end (MP3, o PCM 16 bits mono según audio_start.format)
  */
 
@@ -38,8 +39,33 @@ export function listDevices() {
     connectedAt: d.connectedAt,
     lastSeen: d.lastSeen,
     busy: d.busy,
+    build: d.build || 0,
     status: d.status || null, // lo que reporta el robot (firmware, uptime, WiFi, sensores…)
   }));
+}
+
+/**
+ * Ofrece el firmware nuevo a los robots que tengan uno más viejo. Devuelve qué pasó con cada uno.
+ * Sin force, no interrumpe a uno que está cocinando.
+ */
+export async function offerUpdates({ force = false } = {}) {
+  const last = await latestFirmware();
+  if (!last) return { latest: null, devices: [] };
+  const result = [];
+  for (const [id, d] of devices) {
+    const build = d.build || 0;
+    let estado = 'al día';
+    if (build < last.build) {
+      if (!force && getCocina().activa) estado = 'esperando (está cocinando)';
+      else {
+        send(d.ws, { type: 'ota', build: last.build, size: last.size });
+        logEvent(id, 'ota', { estado: 'ofrecido', de: build, a: last.build });
+        estado = 'actualizando';
+      }
+    }
+    result.push({ deviceId: id, build, estado });
+  }
+  return { latest: last.build, devices: result };
 }
 
 export function recentEvents() {
@@ -112,7 +138,14 @@ async function handleJson(deviceId, device, msg) {
   const { ws } = device;
   switch (msg.type) {
     case 'hello':
-      logEvent(deviceId, 'hello', { firmware: msg.firmware });
+      device.build = Number(msg.build) || 0;
+      logEvent(deviceId, 'hello', { firmware: msg.firmware, build: device.build });
+      // recién conectado: si hay firmware nuevo, que se actualice (salvo que esté cocinando)
+      setTimeout(() => offerUpdates().catch((e) => console.error('[ota]', e.message)), 5000);
+      return;
+
+    case 'ota_status':
+      logEvent(deviceId, 'ota', { estado: String(msg.estado || ''), detalle: String(msg.detalle || '').slice(0, 200) });
       return;
 
     case 'status':
@@ -211,6 +244,8 @@ function handleBinary(device, data) {
 
 /** Engancha el WebSocket del robot al servidor HTTP en /ws/robot?deviceId=...&token=... */
 export function attachRobotSocket(server) {
+  // cada media hora se fija si hay firmware nuevo
+  setInterval(() => offerUpdates().catch((e) => console.error('[ota]', e.message)), 30 * 60_000).unref?.();
   const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
 
   server.on('upgrade', (req, socket, head) => {

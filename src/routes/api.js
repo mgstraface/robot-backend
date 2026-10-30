@@ -23,9 +23,10 @@ import { geocode, getWeather } from '../services/weather.js';
 import { DAY } from '../time.js';
 import { pcmToWav, synthesizeAudio, ttsEnabled } from '../services/voice.js';
 import { VOCES } from '../services/edgeTts.js';
-import { broadcast, listDevices, recentEvents, setEmotion, speak } from '../ws/robotSocket.js';
+import { broadcast, listDevices, offerUpdates, recentEvents, setEmotion, speak } from '../ws/robotSocket.js';
 import { cocinaParaRobot } from '../ws/robotMenu.js';
 import { llamarFede } from '../services/fede.js';
+import { firmwareBinary } from '../services/firmware.js';
 
 const router = Router();
 
@@ -78,6 +79,19 @@ router.get(
     // con .lean() Mongo devuelve un Binary (no un Buffer): se convierte con cuidado
     const data = Buffer.isBuffer(p.data) ? p.data : Buffer.from(p.data.buffer ?? p.data);
     res.type(p.mime || 'image/jpeg').send(data);
+  })
+);
+
+// Firmware nuevo para la placa (actualización por WiFi). El robot pasa su token en la URL.
+router.get(
+  '/firmware/robi.bin',
+  asyncRoute(async (req, res) => {
+    const token = String(req.query.token || '');
+    if (!token || !safeEqual(token, config.deviceToken)) return res.status(401).json({ error: 'No autorizado' });
+    const fw = await firmwareBinary();
+    if (!fw) return res.status(404).json({ error: 'Todavía no hay firmware publicado' });
+    res.set({ 'Content-Type': 'application/octet-stream', 'Content-Length': fw.data.length, 'x-MD5': fw.md5, 'x-Build': fw.build });
+    res.send(fw.data);
   })
 );
 
@@ -371,6 +385,12 @@ router.post('/robot/servo', (req, res) => {
   res.json({ sentTo: broadcast({ type: 'servo', servo, angle: a }) });
 });
 router.post('/robot/servo/stop', (req, res) => res.json({ sentTo: broadcast({ type: 'servo_stop' }) }));
+// Buscar firmware nuevo y, si hay, que la placa se actualice
+router.post(
+  '/robot/ota',
+  asyncRoute(async (req, res) => res.json(await offerUpdates({ force: true })))
+);
+
 // El panel avisa cuando empieza y termina de sonar la voz (en el celu/PC), para que la placa mueva la boca
 router.post('/robot/talking', (req, res) => res.json({ sentTo: broadcast({ type: 'talking', on: Boolean(req.body?.on) }) }));
 

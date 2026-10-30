@@ -6,11 +6,15 @@
 #include <ArduinoJson.h>
 #include <Arduino_GFX_Library.h>
 #include <WebSocketsClient.h>
+#include <HTTPUpdate.h>
+#include <Preferences.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <WiFiMulti.h>
 #include <Wire.h>
 #include <esp_system.h>
 
+#include "ca.h"
 #include "config.h"
 #include "face.h"
 #include "touch.h"
@@ -133,6 +137,13 @@ UI ui;
 WebSocketsClient ws;
 WiFiMulti wifiMulti;  // varias redes: se conecta a la que encuentre
 bool wsConnected = false;
+int otaPending = 0;      // build nuevo que hay que bajar (0 = nada)
+int otaFailedBuild = 0;  // si falló, no reintenta ese mismo hasta reiniciar
+String otaStatus;        // resultado para avisarle al servidor cuando vuelva a conectar
+// WiFi y servidor (ver loadCredentials)
+String wifiSsid[3], wifiPass[3];
+String robiHost, robiDevice, robiToken;
+int robiPort = 443;
 uint32_t lastPing = 0;
 
 void sendJson(JsonDocument &doc) {
@@ -172,6 +183,9 @@ void onServerMessage(const char *payload, size_t length) {
     }
   } else if (!strcmp(type, "calibration") || !strcmp(type, "servo") || !strcmp(type, "servo_stop")) {
     Serial.printf("[servos] %s (se conectan en la etapa 4)\n", type);
+  } else if (!strcmp(type, "ota")) {
+    int build = msg["build"] | 0;
+    if (build > FIRMWARE_BUILD && build != otaFailedBuild) otaPending = build;
   } else if (!strcmp(type, "talking")) {
     face.setTalking(msg["on"] | false);
   } else if (!strcmp(type, "cocina") || !strcmp(type, "recetas")) {
@@ -200,6 +214,7 @@ void sendStatus() {
   JsonDocument st;
   st["type"] = "status";
   st["firmware"] = FIRMWARE_VERSION;
+  st["build"] = FIRMWARE_BUILD;
   st["uptime"] = millis() / 1000;
   st["resetReason"] = resetReason();
   st["rssi"] = WiFi.RSSI();
@@ -216,7 +231,16 @@ void onWsEvent(WStype_t type, uint8_t *payload, size_t length) {
       JsonDocument hello;
       hello["type"] = "hello";
       hello["firmware"] = FIRMWARE_VERSION;
+      hello["build"] = FIRMWARE_BUILD;
       sendJson(hello);
+      if (otaStatus.length()) {
+        JsonDocument os;
+        os["type"] = "ota_status";
+        os["estado"] = "error";
+        os["detalle"] = otaStatus;
+        sendJson(os);
+        otaStatus = "";
+      }
       sendStatus();
       break;
     }
@@ -245,8 +269,94 @@ void listNetworks() {
   int n = WiFi.scanNetworks();
   Serial.printf("[wifi] no encuentro las redes de secrets.h. Veo %d redes:\n", n);
   for (int i = 0; i < n; i++) Serial.printf("   \"%s\"  (señal %d)\n", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
-  Serial.printf("[wifi] en secrets.h tengo: \"%s\"\n", WIFI_SSID);
+  Serial.printf("[wifi] tengo guardado: \"%s\"\n", wifiSsid[0].c_str());
   face.showText("No encuentro el WiFi", 5000);
+}
+
+// ---- WiFi y datos del servidor: vienen de secrets.h al cargar por cable y quedan guardados en la
+// memoria de la placa, así las actualizaciones por WiFi (que se compilan sin secrets.h) los conservan.
+
+void loadCredentials() {
+  Preferences p;
+  p.begin("robi-cred", false);
+#ifndef ROBI_SIN_SECRETOS
+  // compilado en la compu con secrets.h de verdad: se guarda lo que trae
+  p.putString("ssid0", WIFI_SSID);
+  p.putString("pass0", WIFI_PASSWORD);
+#ifdef WIFI_SSID_2
+  p.putString("ssid1", WIFI_SSID_2);
+  p.putString("pass1", WIFI_PASSWORD_2);
+#else
+  p.remove("ssid1");
+#endif
+#ifdef WIFI_SSID_3
+  p.putString("ssid2", WIFI_SSID_3);
+  p.putString("pass2", WIFI_PASSWORD_3);
+#else
+  p.remove("ssid2");
+#endif
+  p.putString("host", ROBI_HOST);
+  p.putInt("port", ROBI_PORT);
+  p.putString("device", ROBI_DEVICE);
+  p.putString("token", ROBI_TOKEN);
+#endif
+  for (int i = 0; i < 3; i++) {
+    wifiSsid[i] = p.getString(("ssid" + String(i)).c_str(), "");
+    wifiPass[i] = p.getString(("pass" + String(i)).c_str(), "");
+  }
+  robiHost = p.getString("host", "robot.malestraface.com");
+  robiPort = p.getInt("port", 443);
+  robiDevice = p.getString("device", "robot-1");
+  robiToken = p.getString("token", "");
+  p.end();
+  if (!wifiSsid[0].length()) Serial.println("[config] no tengo WiFi guardado: cargame una vez por cable con secrets.h");
+}
+
+// ---- actualización por WiFi: baja el firmware nuevo del servidor, lo graba y reinicia
+static void otaScreen(const String &title, int pct) {
+  canvas->fillScreen(0x0000);
+  canvas->setTextColor(0xFFFF);
+  canvas->setTextSize(2);
+  canvas->setCursor((320 - title.length() * 12) / 2, 50);
+  canvas->print(title);
+  if (pct >= 0) {
+    canvas->drawRoundRect(40, 90, 240, 18, 6, face.color());
+    canvas->fillRoundRect(43, 93, (234 * pct) / 100, 12, 4, face.color());
+    String p = String(pct) + "%";
+    canvas->setCursor((320 - p.length() * 12) / 2, 120);
+    canvas->print(p);
+  }
+  canvas->flush();
+}
+
+void doOta(int build) {
+  Serial.printf("[ota] actualizando a la compilacion %d\n", build);
+  ws.disconnect();
+  otaScreen("Actualizando...", 0);
+  WiFiClientSecure client;
+  client.setCACert(ROBI_CA);
+  httpUpdate.rebootOnUpdate(false);
+  static int lastPct = -1;
+  lastPct = -1;
+  httpUpdate.onProgress([](int cur, int total) {
+    int pct = total > 0 ? (int)((int64_t)cur * 100 / total) : 0;
+    if (pct != lastPct) {
+      lastPct = pct;
+      otaScreen("Actualizando...", pct);
+    }
+  });
+  String url = "https://" + robiHost + "/api/firmware/robi.bin?token=" + robiToken;
+  t_httpUpdate_return r = httpUpdate.update(client, url);
+  if (r == HTTP_UPDATE_OK) {
+    otaScreen("Listo! Reiniciando", -1);
+    delay(1000);
+    ESP.restart();
+  }
+  otaFailedBuild = build;
+  otaStatus = httpUpdate.getLastErrorString();
+  Serial.printf("[ota] fallo: %s\n", otaStatus.c_str());
+  face.showText("No pude actualizar", 5000);
+  face.invalidate();
 }
 
 void setup() {
@@ -270,17 +380,13 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
-  wifiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
-#ifdef WIFI_SSID_2
-  wifiMulti.addAP(WIFI_SSID_2, WIFI_PASSWORD_2);
-#endif
-#ifdef WIFI_SSID_3
-  wifiMulti.addAP(WIFI_SSID_3, WIFI_PASSWORD_3);
-#endif
+  loadCredentials();
+  for (int i = 0; i < 3; i++)
+    if (wifiSsid[i].length()) wifiMulti.addAP(wifiSsid[i].c_str(), wifiPass[i].c_str());
   wifiMulti.run();
 
-  String path = String("/ws/robot?deviceId=") + ROBI_DEVICE + "&token=" + ROBI_TOKEN;
-  ws.beginSSL(ROBI_HOST, ROBI_PORT, path.c_str());
+  String path = "/ws/robot?deviceId=" + robiDevice + "&token=" + robiToken;
+  ws.beginSSL(robiHost.c_str(), robiPort, path.c_str());
   ws.onEvent(onWsEvent);
   ws.setReconnectInterval(3000);
   ws.enableHeartbeat(15000, 5000, 2);  // detecta conexiones caídas
@@ -316,6 +422,12 @@ void loop() {
   }
 
   // Aunque no haya conexión, la cara sigue viva (parpadea, vuelve a neutral)
+  if (otaPending && WiFi.status() == WL_CONNECTED) {
+    int b = otaPending;
+    otaPending = 0;
+    doOta(b);
+    return;
+  }
   touch.poll(now, ui);
   face.setBadge(ui.badge(now));
   if (ui.showing()) {

@@ -26,3 +26,9 @@ la cara del robot cambia.
 
 En `include/config.h`. Los de la pantalla salen de la wiki oficial; los de servos, audio y táctiles son el plan
 preliminar y se confirman con el esquema antes de soldar.
+
+## Actualización por WiFi
+
+Cada cambio en `main` se compila solo en GitHub y se publica en el release **firmware**. El servidor se lo ofrece a la placa cuando se conecta (y cada media hora): ella lo baja, muestra el progreso en la pantalla y se reinicia sola. También se puede forzar desde el panel: pestaña **Robot → Buscar actualización**.
+
+Esas versiones se compilan **sin** `secrets.h`: la placa usa el WiFi y el token que guardó la última vez que la cargaste por cable. Si cambiás de WiFi o de token, cargala una vez por cable con el `secrets.h` nuevo.

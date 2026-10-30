@@ -1,10 +1,14 @@
 name: Firmware (compilar)
 
-# Compila el firmware de Robi en cada cambio, para detectar errores antes de cargarlo en la placa.
+# Compila el firmware de Robi en cada cambio. En main, además lo publica en el release "firmware":
+# el servidor se lo ofrece a la placa y ella se actualiza sola por WiFi.
 on:
   push:
     paths: ['firmware/**', '.github/workflows/firmware.yml']
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -22,12 +26,30 @@ jobs:
           path: ~/.platformio
           key: pio-${{ hashFiles('firmware/platformio.ini') }}
       - run: pip install platformio
-      - name: secrets.h de prueba
-        run: cp include/secrets.example.h include/secrets.h
+      - name: secrets.h sin datos (la placa usa el WiFi y el token que ya tiene guardados)
+        run: |
+          cp include/secrets.example.h include/secrets.h
+          echo '#define ROBI_SIN_SECRETOS 1' >> include/secrets.h
       - name: Compilar
+        env:
+          PLATFORMIO_BUILD_FLAGS: -DFIRMWARE_BUILD=${{ github.run_number }}
         run: |
           set -o pipefail
           pio run 2>&1 | tee build.log
+          grep -E "^(RAM|Flash):" build.log | while read -r l; do echo "::notice::$l"; done
       - name: Mostrar errores
         if: failure()
         run: grep -E "error|Error" build.log | head -30 | while read -r l; do echo "::error::$l"; done
+      - name: Publicar para la actualización por WiFi
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          f=robi-${{ github.run_number }}.bin
+          cp .pio/build/robi/firmware.bin "$f"
+          gh release view firmware >/dev/null 2>&1 || gh release create firmware --title "Firmware de Robi" --notes "Último firmware de la placa. El servidor se lo pasa y se actualiza sola por WiFi." --latest=false
+          gh release upload firmware "$f"
+          for a in $(gh release view firmware --json assets -q '.assets[].name'); do
+            if [ "$a" != "$f" ]; then gh release delete-asset firmware "$a" -y; fi
+          done
+          echo "::notice::Publicado $f"
