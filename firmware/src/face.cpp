@@ -31,6 +31,7 @@ void Face::begin(Arduino_Canvas *canvas) {
   g_ = canvas;
   canvas_ = canvas;
   useClips_ = clips_.begin();
+  if (useClips_) mouth_.begin(true);
   nextBlink_ = millis() + 2500;
 }
 
@@ -142,6 +143,21 @@ bool Face::update(uint32_t now) {
       dirty_ = true;
     }
     if (clips_.tick(now)) dirty_ = true;
+    // boca hablando (no durante las acciones, que tienen su propia animación)
+    if (talking_ && (int32_t)(now - talkingUntil_) > 0) talking_ = false;
+    if (talking_ && !action_.length()) {
+      String mk = String("boca/") + (terror_ ? "terror" : "tierno");
+      if (mk != mouthKey_) {
+        mouthKey_ = mk;
+        mouth_.start(mouth_.find(mk), now);
+        dirty_ = true;
+      }
+      if (mouth_.tick(now)) dirty_ = true;
+    } else if (mouthKey_.length()) {
+      mouthKey_ = "";
+      mouth_.start(-1, now);
+      dirty_ = true;
+    }
   } else if (!blinking_ && now >= nextBlink_) {  // parpadeo
     blinking_ = true;
     blinkEnd_ = now + 120;
@@ -346,8 +362,13 @@ void Face::drawAction(uint32_t now) {
 }
 
 void Face::draw(uint32_t now) {
-  if (useClips_ && clips_.current() >= 0) clips_.blit(canvas_->getFramebuffer(), eye_, glanceDx_);
-  else drawVector(now);
+  if (useClips_ && clips_.current() >= 0) {
+    clips_.blit(canvas_->getFramebuffer(), eye_, glanceDx_);
+    // tapa la boca de la cara con la boca hablando (misma zona que en el panel)
+    if (mouth_.current() >= 0) mouth_.blitRegion(canvas_->getFramebuffer(), eye_, 112, 124, 96, 48, glanceDx_);
+  } else {
+    drawVector(now);
+  }
   if (badge_.length()) {
     g_->setTextSize(2);
     g_->setTextColor(0xF52A);

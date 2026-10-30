@@ -371,6 +371,9 @@ router.post('/robot/servo', (req, res) => {
   res.json({ sentTo: broadcast({ type: 'servo', servo, angle: a }) });
 });
 router.post('/robot/servo/stop', (req, res) => res.json({ sentTo: broadcast({ type: 'servo_stop' }) }));
+// El panel avisa cuando empieza y termina de sonar la voz (en el celu/PC), para que la placa mueva la boca
+router.post('/robot/talking', (req, res) => res.json({ sentTo: broadcast({ type: 'talking', on: Boolean(req.body?.on) }) }));
+
 // Token del robot, para copiarlo en firmware/include/secrets.h (solo con la clave de admin)
 router.get('/robot/token', (req, res) => res.json({ token: config.deviceToken }));
 

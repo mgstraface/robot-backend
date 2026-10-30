@@ -172,6 +172,8 @@ void onServerMessage(const char *payload, size_t length) {
     }
   } else if (!strcmp(type, "calibration") || !strcmp(type, "servo") || !strcmp(type, "servo_stop")) {
     Serial.printf("[servos] %s (se conectan en la etapa 4)\n", type);
+  } else if (!strcmp(type, "talking")) {
+    face.setTalking(msg["on"] | false);
   } else if (!strcmp(type, "cocina") || !strcmp(type, "recetas")) {
     ui.onServer(msg);
   } else if (!strcmp(type, "error")) {

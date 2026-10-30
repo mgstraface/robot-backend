@@ -26,6 +26,9 @@ class ClipPlayer {
   }
   // pinta el cuadro actual en el lienzo con el color de ojos (dx: corre la cara a los costados)
   void blit(uint16_t *fb, uint16_t eye, int dx);
+  // pinta solo un rectángulo del cuadro actual (para pegar la boca hablando encima de la cara)
+  void blitRegion(uint16_t *fb, uint16_t eye, int x0, int y0, int w, int h, int dx);
+  bool begin(bool quiet);
 
  private:
   struct Clip {

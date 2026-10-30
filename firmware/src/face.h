@@ -11,7 +11,8 @@ class Face {
   void setEmotion(const String &emotion);
   void setColor(uint16_t color) { eye_ = color; dirty_ = true; }
   void setTerror(bool terror) { terror_ = terror; dirty_ = true; }
-  void setTalking(bool talking) { talking_ = talking; }
+  // la voz suena en el celu/PC: mientras tanto se mueve la boca (con tope por si nunca llega el "terminó")
+  void setTalking(bool talking) { talking_ = talking; talkingUntil_ = millis() + 60000; dirty_ = true; }
   uint16_t color() const { return eye_; }
   void invalidate() { dirty_ = true; }
   // mira hacia un costado un rato (dx en píxeles: negativo = izquierda)
@@ -47,6 +48,9 @@ class Face {
   Arduino_GFX *g_ = nullptr;
   Arduino_Canvas *canvas_ = nullptr;
   ClipPlayer clips_;
+  ClipPlayer mouth_;  // boca hablando (se pega encima)
+  String mouthKey_;
+  uint32_t talkingUntil_ = 0;
   bool useClips_ = false;
   String clipKey_;
   uint32_t nextIdle_ = 0;

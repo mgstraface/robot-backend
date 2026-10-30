@@ -11,7 +11,9 @@ extern const uint8_t caras_end[] asm("_binary_data_caras_bin_end");
 static inline uint16_t rd16(const uint8_t *p) { return p[0] | (p[1] << 8); }
 static inline uint32_t rd32(const uint8_t *p) { return p[0] | (p[1] << 8) | (p[2] << 16) | ((uint32_t)p[3] << 24); }
 
-bool ClipPlayer::begin() {
+bool ClipPlayer::begin() { return begin(false); }
+
+bool ClipPlayer::begin(bool quiet) {
   bin_ = caras_start;
   len_ = caras_end - caras_start;
   if (len_ < 16 || memcmp(bin_, "CARA", 4) || bin_[4] != 2) {
@@ -41,7 +43,7 @@ bool ClipPlayer::begin() {
   codes_ = (uint8_t *)heap_caps_malloc(W * H, MALLOC_CAP_SPIRAM);
   if (!codes_) codes_ = (uint8_t *)malloc(W * H);
   if (codes_) memset(codes_, 0, W * H);
-  Serial.printf("[caras] %d caras y animaciones (%u KB)\n", n, (unsigned)(len_ / 1024));
+  if (!quiet) Serial.printf("[caras] %d caras y animaciones (%u KB)\n", n, (unsigned)(len_ / 1024));
   return ok();
 }
 
@@ -139,6 +141,17 @@ void ClipPlayer::blit(uint16_t *fb, uint16_t eye, int dx) {
         int sx = x - dx;
         dst[x] = (sx >= 0 && sx < W) ? lut_[src[sx]] : lut_[0];
       }
+    }
+  }
+}
+
+void ClipPlayer::blitRegion(uint16_t *fb, uint16_t eye, int x0, int y0, int w, int h, int dx) {
+  if (!fb || !codes_ || cur_ < 0) return;
+  if (!lutOk_ || eye != lutEye_) buildLut(eye);
+  for (int y = y0; y < y0 + h && y < H; y++) {
+    for (int x = x0; x < x0 + w && x < W; x++) {
+      int sx = x - dx;
+      fb[y * W + x] = (sx >= 0 && sx < W) ? lut_[codes_[y * W + sx]] : lut_[0];
     }
   }
 }
