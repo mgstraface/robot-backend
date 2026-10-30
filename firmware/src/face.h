@@ -1,0 +1,43 @@
+#pragma once
+#include <Arduino_GFX_Library.h>
+
+// Dibuja la cara de Robi en la pantalla (320x172 apaisada), con las mismas caras que el panel.
+// Las coordenadas son las del panel (240x180 centradas): x de -40 a 280, y de 4 a 176.
+class Face {
+ public:
+  void begin(Arduino_GFX *canvas);
+  void setEmotion(const String &emotion);
+  void setColor(uint16_t color) { eye_ = color; dirty_ = true; }
+  void setTerror(bool terror) { terror_ = terror; dirty_ = true; }
+  void setTalking(bool talking) { talking_ = talking; }
+  void showText(const String &text, uint32_t ms);  // cartelito abajo (estado, avisos)
+  // Llamar seguido en loop(): anima parpadeo, boca y vuelve a neutral solo. Devuelve true si redibujó.
+  bool update(uint32_t now);
+  const String &emotion() const { return emotion_; }
+
+  static uint16_t parseColor(const char *hex);  // "#5ef2ff" -> RGB565
+
+ private:
+  void draw(uint32_t now);
+  int X(float x) const { return (int)(x + 40); }
+  int Y(float y) const { return (int)(y - 4); }
+  void eye(float cx, float w = 40, float h = 56, float dy = 0, float dx = 0);
+  void lid(float cx, float inner, float outer, bool left);
+  void thickQuad(float x0, float y0, float cx, float cy, float x1, float y1, float r, uint16_t c);
+  void mouth(const char *kind);
+  void heart(float cx, float cy);
+
+  Arduino_GFX *g_ = nullptr;
+  String emotion_ = "neutral";
+  uint16_t eye_ = 0x5F1F;
+  bool terror_ = false;
+  bool talking_ = false;
+  bool dirty_ = true;
+  bool blinking_ = false;
+  uint32_t nextBlink_ = 0;
+  uint32_t blinkEnd_ = 0;
+  uint32_t emotionAt_ = 0;
+  uint32_t lastFrame_ = 0;
+  String text_;
+  uint32_t textUntil_ = 0;
+};
