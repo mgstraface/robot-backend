@@ -130,7 +130,7 @@ void Servos::stop() {
 
 void Servos::update(uint32_t now) {
   // coreografía: aplica los cuadros que ya tocan
-  while (keys_ && nextKey_ < nKeys_ && now - gestureStart_ >= keys_[nextKey_].t) {
+  while (keys_ && nextKey_ < nKeys_ && (int32_t)(now - gestureStart_) >= (int32_t)keys_[nextKey_].t) {
     const Key &k = keys_[nextKey_];
     // tiempo hasta el próximo cuadro: tiene que llegar antes (un 85%), sin pasar el máximo del SG90
     float dt = (nextKey_ + 1 < nKeys_ ? keys_[nextKey_ + 1].t - k.t : 500) / 1000.0f;
