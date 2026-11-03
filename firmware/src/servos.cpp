@@ -156,7 +156,8 @@ void Servos::update(uint32_t now) {
     write(i, pos_[i]);
     moving = true;
   }
-  // los brazos, quietos 2 s, se sueltan (no tiemblan ni gastan batería); el cuello queda firme
+  // los brazos, quietos 2 s, se sueltan (no tiemblan ni gastan batería). El cuello queda SIEMPRE firme:
+  // en Robi v2 el eje del SÍ queda atrás del centro de la cabeza y, suelto, la cara se caería para adelante.
   if (moving || keys_) idleSince_ = now;
   else if (now - idleSince_ > 2000)
     for (int i : {ARM_L, ARM_R})
