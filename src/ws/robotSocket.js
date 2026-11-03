@@ -14,7 +14,7 @@ import { sttEnabled, synthesizeAudio, transcribe, ttsEnabled } from '../services
  * Protocolo robot ⇄ servidor (ver README para el detalle):
  *   Robot → servidor (JSON): hello, status, log, listen_start, listen_end, text, touch, motion, menu, ota_status, ping
  *   Robot → servidor (binario): audio PCM 16 kHz / 16 bits / mono entre listen_start y listen_end
- *   Servidor → robot (JSON): welcome, appearance, calibration, servo, servo_stop, test, emotion, action, gesture, transcript, reply, cocina, recetas, talking, ota, audio_start, audio_end, error, pong
+ *   Servidor → robot (JSON): welcome, appearance, calibration, servo, servo_stop, test, emotion, action, gesture, transcript, reply, cocina, recetas, talking, ota, display, audio_start, audio_end, error, pong
  *   Servidor → robot (binario): audio entre audio_start y audio_end (MP3, o PCM 16 bits mono según audio_start.format)
  */
 
@@ -273,7 +273,10 @@ export function attachRobotSocket(server) {
     logEvent(deviceId, 'connected');
     send(ws, { type: 'welcome', deviceId, voice: ttsEnabled(), listen: sttEnabled(), inputSampleRate: config.voice.inputSampleRate });
     getSettings()
-      .then((s) => send(ws, { type: 'calibration', servos: s.servos }))
+      .then((s) => {
+        send(ws, { type: 'calibration', servos: s.servos });
+        send(ws, { type: 'display', girada: Boolean(s.pantallaGirada) });
+      })
       .catch(() => {});
     send(ws, cocinaParaRobot());
     getPersonality()

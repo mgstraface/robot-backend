@@ -33,7 +33,7 @@
 #define PIN_TOUCH_PANZA    10
 #define PIN_TOUCH_ESPALDA  11
 
-#define FIRMWARE_VERSION "0.5.2"
+#define FIRMWARE_VERSION "0.5.3"
 // Número de compilación: lo pone GitHub al publicar (las compiladas en la compu quedan en 0)
 #ifndef FIRMWARE_BUILD
 #define FIRMWARE_BUILD 0

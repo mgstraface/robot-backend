@@ -17,10 +17,12 @@ class Touch {
  public:
   bool begin();
   void poll(uint32_t now, TouchHandler &h);  // llamar seguido en loop()
+  void setFlipped(bool f) { flipped_ = f; }  // pantalla girada 180°
 
  private:
   bool read(int &x, int &y);  // true si hay un dedo apoyado
   bool ok_ = false;
+  bool flipped_ = false;
   bool down_ = false;
   bool longFired_ = false;
   bool moved_ = false;

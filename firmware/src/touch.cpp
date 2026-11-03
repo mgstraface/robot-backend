@@ -52,6 +52,10 @@ bool Touch::read(int &x, int &y) {
   int rawY = ((d[4] & 0x0F) << 8) | d[5];  // 0..319
   x = rawY;  // apaisada: se cruzan los ejes
   y = rawX;
+  if (flipped_) {  // pantalla girada 180°
+    x = 319 - x;
+    y = 171 - y;
+  }
   return true;
 }
 

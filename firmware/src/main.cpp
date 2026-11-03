@@ -197,6 +197,15 @@ void onServerMessage(const char *payload, size_t length) {
   } else if (!strcmp(type, "ota")) {
     int build = msg["build"] | 0;
     if (build > FIRMWARE_BUILD && build != otaFailedBuild) otaPending = build;
+  } else if (!strcmp(type, "display")) {
+    bool girada = msg["girada"] | false;
+    Preferences p;
+    p.begin("robi", false);
+    if (p.getBool("girada", false) != girada) p.putBool("girada", girada);
+    p.end();
+    panel->setRotation(girada ? 3 : 1);
+    touch.setFlipped(girada);
+    face.invalidate();
   } else if (!strcmp(type, "talking")) {
     face.setTalking(msg["on"] | false);
   } else if (!strcmp(type, "cocina") || !strcmp(type, "recetas")) {
@@ -377,7 +386,15 @@ void setup() {
 
   if (!canvas->begin(40000000)) Serial.println("[pantalla] no arrancó: revisar pines en include/config.h");
   jd9853Init();
-  panel->setRotation(1);  // apaisada: 320x172
+  // apaisada (320x172); 3 = dada vuelta, si la placa está montada al revés (se guarda)
+  {
+    Preferences p;
+    p.begin("robi", true);
+    bool girada = p.getBool("girada", false);
+    p.end();
+    panel->setRotation(girada ? 3 : 1);
+    touch.setFlipped(girada);
+  }
   canvas->fillScreen(0x0000);
   canvas->flush();
 

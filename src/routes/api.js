@@ -232,6 +232,7 @@ router.put(
     if (errors.length) return res.status(400).json({ error: `Valores inválidos: ${errors.join(', ')}` });
     const saved = await updateSettings(update);
     if (update.servos) broadcast({ type: 'calibration', servos: saved.servos });
+    if ('pantallaGirada' in update) broadcast({ type: 'display', girada: Boolean(saved.pantallaGirada) });
     if ('calendarUrl' in update) clearCalendarCache();
     resetScarePlan();
     res.json(publicSettings(saved));
