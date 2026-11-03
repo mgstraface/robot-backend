@@ -11,7 +11,7 @@ static const int16_t X = 999;                  // "no tocar" en una coreografía
 // ---- coreografías (desplazamientos en grados desde el centro; brazos: + = arriba)
 //                    t      pan  tilt armL armR
 static const Servos::Key ASENTIR[] = {{0, {X, 14, X, X}}, {250, {X, -8, X, X}}, {500, {X, 14, X, X}}, {750, {X, -8, X, X}}, {1000, {X, 0, X, X}}};
-static const Servos::Key NEGAR[] = {{0, {25, X, X, X}}, {300, {-25, X, X, X}}, {600, {25, X, X, X}}, {900, {-25, X, X, X}}, {1150, {0, X, X, X}}};
+static const Servos::Key NEGAR[] = {{0, {30, X, X, X}}, {300, {-30, X, X, X}}, {600, {30, X, X, X}}, {900, {-30, X, X, X}}, {1200, {0, X, X, X}}};
 static const Servos::Key ARRIBA[] = {{0, {X, 20, X, X}}, {1200, {X, 0, X, X}}};
 static const Servos::Key ABAJO[] = {{0, {X, -20, X, X}}, {1200, {X, 0, X, X}}};
 static const Servos::Key IZQ[] = {{0, {40, X, X, X}}, {1200, {0, X, X, X}}};
@@ -45,7 +45,10 @@ void Servos::begin() {
   cal_[TILT] = {90, 65, 115, 90, false};
   cal_[ARM_L] = {20, 0, 170, 180, false};
   cal_[ARM_R] = {20, 0, 170, 180, true};
-  for (int i = 0; i < N; i++) pos_[i] = goal_[i] = cal_[i].centro;
+  for (int i = 0; i < N; i++) {
+    pos_[i] = goal_[i] = cal_[i].centro;
+    speed_[i] = cal_[i].vel;
+  }
 }
 
 int Servos::idOf(const char *name) {
@@ -86,11 +89,12 @@ void Servos::write(int i, float angle) {
 
 float Servos::offsetToAngle(int i, int off) const { return cal_[i].centro + (cal_[i].inv ? -off : off); }
 
-void Servos::target(int i, float angle, bool clamp) {
+void Servos::target(int i, float angle, bool clamp, float speed) {
   if (clamp) angle = constrain(angle, (float)cal_[i].min, (float)cal_[i].max);
   else angle = constrain(angle, 0.0f, 180.0f);
   attach(i);
   goal_[i] = angle;
+  speed_[i] = speed > 0 ? speed : cal_[i].vel;
 }
 
 void Servos::moveRaw(const char *name, int angle) {
@@ -127,8 +131,15 @@ void Servos::stop() {
 void Servos::update(uint32_t now) {
   // coreografía: aplica los cuadros que ya tocan
   while (keys_ && nextKey_ < nKeys_ && now - gestureStart_ >= keys_[nextKey_].t) {
-    for (int i = 0; i < N; i++)
-      if (keys_[nextKey_].p[i] != X) target(i, offsetToAngle(i, keys_[nextKey_].p[i]));
+    const Key &k = keys_[nextKey_];
+    // tiempo hasta el próximo cuadro: tiene que llegar antes (un 85%), sin pasar el máximo del SG90
+    float dt = (nextKey_ + 1 < nKeys_ ? keys_[nextKey_ + 1].t - k.t : 500) / 1000.0f;
+    for (int i = 0; i < N; i++) {
+      if (k.p[i] == X) continue;
+      float a = constrain(offsetToAngle(i, k.p[i]), (float)cal_[i].min, (float)cal_[i].max);
+      float need = fabsf(a - pos_[i]) / (dt * 0.85f);
+      target(i, a, true, constrain(need, (float)cal_[i].vel, 450.0f));
+    }
     if (++nextKey_ >= nKeys_) keys_ = nullptr;
   }
   // avanza cada servo hacia su meta a su velocidad
@@ -140,7 +151,7 @@ void Servos::update(uint32_t now) {
     if (!on_[i]) continue;
     float d = goal_[i] - pos_[i];
     if (fabsf(d) < 0.5f) continue;
-    float step = cal_[i].vel * dt;
+    float step = speed_[i] * dt;
     pos_[i] += d > 0 ? min(step, d) : max(-step, d);
     write(i, pos_[i]);
     moving = true;

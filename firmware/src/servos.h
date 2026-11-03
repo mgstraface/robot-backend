@@ -28,11 +28,12 @@ class Servos {
   void attach(int i);
   void write(int i, float angle);
   float offsetToAngle(int i, int off) const;
-  void target(int i, float angle, bool clamp = true);
+  void target(int i, float angle, bool clamp = true, float speed = 0);
 
   Cal cal_[N];
   float pos_[N];
   float goal_[N];
+  float speed_[N];  // grados/s del movimiento actual (en los gestos, lo que haga falta para llegar a tiempo)
   bool on_[N] = {false, false, false, false};
   uint32_t last_ = 0;
   const Key *keys_ = nullptr;
