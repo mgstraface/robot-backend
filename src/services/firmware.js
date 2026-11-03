@@ -11,8 +11,8 @@ let infoAt = 0;
 let bin = null; // { build, data, md5 }
 
 /** Último firmware publicado: { build, size, url } (o null si todavía no hay). */
-export async function latestFirmware(now = Date.now()) {
-  if (info && now - infoAt < CACHE_MS) return info;
+export async function latestFirmware(now = Date.now(), { fresh = false } = {}) {
+  if (!fresh && info && now - infoAt < CACHE_MS) return info;
   const r = await fetch(`https://api.github.com/repos/${REPO}/releases/tags/${TAG}`, {
     headers: { 'User-Agent': 'robot-backend', Accept: 'application/vnd.github+json' },
   });

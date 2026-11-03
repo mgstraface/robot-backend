@@ -49,7 +49,8 @@ export function listDevices() {
  * Sin force, no interrumpe a uno que está cocinando.
  */
 export async function offerUpdates({ force = false } = {}) {
-  const last = await latestFirmware();
+  // el botón del panel (force) pregunta siempre la última; el chequeo automático usa la guardada
+  const last = await latestFirmware(Date.now(), { fresh: force });
   if (!last) return { latest: null, devices: [] };
   const result = [];
   for (const [id, d] of devices) {
