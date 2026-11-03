@@ -133,6 +133,27 @@ static void jd9853Init() {
     bus->batchOperation(init_operations, sizeof(init_operations));
 }
 
+// Pantalla girada 180°: se invierte el lienzo (el último píxel pasa a ser el primero), se manda y se
+// vuelve a dejar como estaba. Más seguro que pedirle el giro al chip de la pantalla.
+bool pantallaGirada = false;
+static void flip180(uint16_t *fb, int n) {
+  for (int i = 0, j = n - 1; i < j; i++, j--) {
+    uint16_t t = fb[i];
+    fb[i] = fb[j];
+    fb[j] = t;
+  }
+}
+void flushScreen() {
+  uint16_t *fb = canvas->getFramebuffer();
+  if (pantallaGirada && fb) {
+    flip180(fb, 320 * 172);
+    canvas->flush();
+    flip180(fb, 320 * 172);
+  } else {
+    canvas->flush();
+  }
+}
+
 Face face;
 Servos servos;
 Touch touch;
@@ -203,9 +224,10 @@ void onServerMessage(const char *payload, size_t length) {
     p.begin("robi", false);
     if (p.getBool("girada", false) != girada) p.putBool("girada", girada);
     p.end();
-    panel->setRotation(girada ? 3 : 1);
+    pantallaGirada = girada;
     touch.setFlipped(girada);
     face.invalidate();
+    flushScreen();
   } else if (!strcmp(type, "talking")) {
     face.setTalking(msg["on"] | false);
   } else if (!strcmp(type, "cocina") || !strcmp(type, "recetas")) {
@@ -346,7 +368,7 @@ static void otaScreen(const String &title, int pct) {
     canvas->setCursor((320 - p.length() * 12) / 2, 120);
     canvas->print(p);
   }
-  canvas->flush();
+  flushScreen();
 }
 
 void doOta(int build) {
@@ -392,11 +414,12 @@ void setup() {
     p.begin("robi", true);
     bool girada = p.getBool("girada", false);
     p.end();
-    panel->setRotation(girada ? 3 : 1);
+    panel->setRotation(1);
+    pantallaGirada = girada;
     touch.setFlipped(girada);
   }
   canvas->fillScreen(0x0000);
-  canvas->flush();
+  flushScreen();
 
   face.begin(canvas);
   servos.begin();
@@ -405,7 +428,7 @@ void setup() {
   touch.begin();
   face.showText("Conectando al WiFi...", 15000);
   face.update(millis());
-  canvas->flush();
+  flushScreen();
 
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
@@ -504,10 +527,10 @@ void loop() {
   touch.poll(now, ui);
   face.setBadge(ui.badge(now));
   if (ui.showing()) {
-    if (ui.update(now)) canvas->flush();
+    if (ui.update(now)) flushScreen();
   } else {
     ui.update(now);
-    if (face.update(now)) canvas->flush();
+    if (face.update(now)) flushScreen();
   }
   delay(5);
 }
