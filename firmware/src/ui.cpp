@@ -40,7 +40,8 @@ void UI::openMenu(const String &level, int index) {
   if (level == "main") {
     items_ = {{"cocina", "Cocina", "", 0},          {"temporizador", "Temporizador", "", 0}, {"pomodoro", "Pomodoro 25 min", "", 25},
               {"clima", "Clima", "", 0},            {"chiste", "Contame un chiste", "", 0},  {"modo", "Tierno / Terror", "", 0},
-              {"brillo", "Brillo: " + String(brillo_) + "%", "", 0}, {"juegos", "Juegos", "", 0}};
+              {"brillo", "Brillo: " + String(brillo_) + "%", "", 0}, {"juegos", "Juegos", "", 0},
+              {"wifi", "Configurar WiFi", "", 0}};
   } else if (level == "temporizador") {
     if (!timers_.empty()) items_.push_back({"cancelarTimers", timers_.size() == 1 ? "Cancelar el timer" : "Cancelar los timers", "", 0});
     int mins[] = {1, 3, 5, 10, 15, 30};
@@ -112,6 +113,9 @@ void UI::runItem(const Item &it) {
     int next = brillo_ > 75 ? 70 : brillo_ > 45 ? 40 : brillo_ > 20 ? 15 : 100;
     setBrightness(next);
     items_[index_].label = "Brillo: " + String(brillo_) + "%";
+  } else if (id == "wifi") {
+    wifiSetup_ = true;
+    screen_ = CARA;
   } else if (id == "juegos") {
     showPeek("Juegos", "Por ahora estan", "en el panel");
   } else if (id == "seguir") {

@@ -21,6 +21,8 @@ class UI : public TouchHandler {
   // Mensajes del servidor que le tocan a la interfaz: "cocina" y "recetas"
   void onServer(JsonDocument &msg);
   void setOnline(bool online) { online_ = online; }
+  // el menú pidió configurar el WiFi (se lee una vez)
+  bool takeWifiSetup() { bool w = wifiSetup_; wifiSetup_ = false; return w; }
 
   bool showing() const;          // true si en vez de la cara va una pantalla de la interfaz
   bool update(uint32_t now);     // dibuja si hace falta; true si redibujó
@@ -86,4 +88,5 @@ class UI : public TouchHandler {
   uint32_t cocinaTimerFin_ = 0;
 
   int brillo_ = 100;
+  bool wifiSetup_ = false;
 };

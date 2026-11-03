@@ -19,6 +19,7 @@
 #include "face.h"
 #include "touch.h"
 #include "ui.h"
+#include "wifiportal.h"
 
 #if __has_include("secrets.h")
 #include "secrets.h"
@@ -140,6 +141,9 @@ bool wsConnected = false;
 int otaPending = 0;      // build nuevo que hay que bajar (0 = nada)
 int otaFailedBuild = 0;  // si falló, no reintenta ese mismo hasta reiniciar
 String otaStatus;        // resultado para avisarle al servidor cuando vuelva a conectar
+bool noWifiKnown = false;
+bool wifiShownEver = false;
+uint32_t wifiLostAt = 0;  // desde cuándo no hay WiFi (para abrir el modo configuración)
 // WiFi y servidor (ver loadCredentials)
 String wifiSsid[3], wifiPass[3];
 String robiHost, robiDevice, robiToken;
@@ -270,7 +274,7 @@ void listNetworks() {
   Serial.printf("[wifi] no encuentro las redes de secrets.h. Veo %d redes:\n", n);
   for (int i = 0; i < n; i++) Serial.printf("   \"%s\"  (señal %d)\n", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
   Serial.printf("[wifi] tengo guardado: \"%s\"\n", wifiSsid[0].c_str());
-  face.showText("No encuentro el WiFi", 5000);
+  face.showText("No encuentro el WiFi (en 40 s: modo config)", 5000);
 }
 
 // ---- WiFi y datos del servidor: vienen de secrets.h al cargar por cable y quedan guardados en la
@@ -381,8 +385,22 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   loadCredentials();
+  int known = 0;
   for (int i = 0; i < 3; i++)
-    if (wifiSsid[i].length()) wifiMulti.addAP(wifiSsid[i].c_str(), wifiPass[i].c_str());
+    if (wifiSsid[i].length()) {
+      wifiMulti.addAP(wifiSsid[i].c_str(), wifiPass[i].c_str());
+      known++;
+    }
+  // las que se cargaron desde el celu (modo configuración)
+  {
+    String ps[3], pp[3];
+    int n = WifiPortal::saved(ps, pp, 3);
+    for (int i = 0; i < n; i++) {
+      wifiMulti.addAP(ps[i].c_str(), pp[i].c_str());
+      known++;
+    }
+  }
+  noWifiKnown = known == 0;
   wifiMulti.run();
 
   String path = "/ws/robot?deviceId=" + robiDevice + "&token=" + robiToken;
@@ -396,9 +414,23 @@ void loop() {
   static bool wifiShown = false;
   uint32_t now = millis();
 
+  // modo configuración del WiFi: mientras está, no hace otra cosa
+  if (WifiPortal::active()) {
+    WifiPortal::loop();
+    delay(2);
+    return;
+  }
+  if (ui.takeWifiSetup()) {
+    ws.disconnect();
+    WifiPortal::start(canvas, face.color());
+    return;
+  }
+
   if (WiFi.status() == WL_CONNECTED) {
+    wifiLostAt = 0;
     if (!wifiShown) {
       wifiShown = true;
+      wifiShownEver = true;
       Serial.printf("[wifi] conectado a %s, IP %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
       face.showText("WiFi OK, buscando al servidor...", 4000);
       configTzTime("<-03>3", "pool.ntp.org", "time.google.com");  // hora de Argentina
@@ -412,6 +444,13 @@ void loop() {
     if (wifiShown) {
       wifiShown = false;
       face.showText("Se cayo el WiFi...", 4000);
+    }
+    if (!wifiLostAt) wifiLostAt = now ? now : 1;
+    // sin ninguna red conocida a la vista: modo configuración (al arrancar a los 40 s; si se cayó, a los 3 min)
+    uint32_t espera = wifiShownEver ? 180000 : 40000;
+    if (noWifiKnown || now - wifiLostAt > espera) {
+      WifiPortal::start(canvas, face.color());
+      return;
     }
     // busca de nuevo entre las redes conocidas cada 10 s
     static uint32_t lastTry = 0;
