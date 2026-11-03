@@ -18,6 +18,7 @@
 #include "config.h"
 #include "face.h"
 #include "touch.h"
+#include "servos.h"
 #include "ui.h"
 #include "wifiportal.h"
 
@@ -133,6 +134,7 @@ static void jd9853Init() {
 }
 
 Face face;
+Servos servos;
 Touch touch;
 UI ui;
 WebSocketsClient ws;
@@ -175,18 +177,23 @@ void onServerMessage(const char *payload, size_t length) {
     // hasta tener parlante, muestra el comienzo de lo que dice
     face.showText(String(msg["text"] | ""), 5000);
   } else if (!strcmp(type, "gesture")) {
-    Serial.printf("[gesto] %s (servos: etapa 4)\n", (const char *)(msg["gesture"] | ""));
+    servos.gesture(msg["gesture"] | "");
   } else if (!strcmp(type, "action")) {
     face.playAction(String(msg["action"] | ""), String(msg["weather"] | ""));
   } else if (!strcmp(type, "test")) {
     String what = msg["what"] | "";
     if (what == "reiniciar") ESP.restart();
+    if (what == "servos") servos.gesture("negar");
     if (what == "pantalla") {
       face.setEmotion("feliz");
       face.showText("Prueba de pantalla", 3000);
     }
-  } else if (!strcmp(type, "calibration") || !strcmp(type, "servo") || !strcmp(type, "servo_stop")) {
-    Serial.printf("[servos] %s (se conectan en la etapa 4)\n", type);
+  } else if (!strcmp(type, "calibration")) {
+    servos.setCalibration(msg["servos"]);
+  } else if (!strcmp(type, "servo")) {
+    servos.moveRaw(msg["servo"] | "", msg["angle"] | 90);
+  } else if (!strcmp(type, "servo_stop")) {
+    servos.stop();
   } else if (!strcmp(type, "ota")) {
     int build = msg["build"] | 0;
     if (build > FIRMWARE_BUILD && build != otaFailedBuild) otaPending = build;
@@ -375,6 +382,7 @@ void setup() {
   canvas->flush();
 
   face.begin(canvas);
+  servos.begin();
   ui.begin(canvas, &face, sendJson);  // también prende la luz de fondo (con el brillo guardado)
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
   touch.begin();
@@ -475,6 +483,7 @@ void loop() {
     doOta(b);
     return;
   }
+  servos.update(now);
   touch.poll(now, ui);
   face.setBadge(ui.badge(now));
   if (ui.showing()) {
