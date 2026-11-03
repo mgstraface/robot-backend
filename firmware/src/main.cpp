@@ -417,6 +417,14 @@ void loop() {
   // modo configuración del WiFi: mientras está, no hace otra cosa
   if (WifiPortal::active()) {
     WifiPortal::loop();
+    // mantener apretada la pantalla: salir sin configurar (reinicia y vuelve a la cara)
+    struct Salir : TouchHandler {
+      void onTap(int, int) override {}
+      void onTripleTap() override {}
+      void onSwipe(Swipe) override {}
+      void onLongPress() override { ESP.restart(); }
+    } static salir;
+    touch.poll(now, salir);
     delay(2);
     return;
   }

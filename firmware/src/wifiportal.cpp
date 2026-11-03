@@ -115,7 +115,7 @@ static void screen(Arduino_Canvas *c, uint16_t color) {
   c->setTextSize(1);
   c->setTextColor(0x9CD3);
   c->setCursor(16, 154);
-  c->print("Si no se abre sola, entra a 192.168.4.1");
+  c->print("Pagina: 192.168.4.1  -  mantene apretado: salir");
   c->flush();
 }
 
