@@ -107,8 +107,10 @@ def cabeza_frente():
 
     # nervio donde apoyan las orejitas del servo, con ranura abierta hacia atrás para el cuerpo
     nervio = box((OREJA_X - NERVIO / 2, (SERVO_Y0 + FONDO) / 2, 0), (NERVIO, FONDO - SERVO_Y0, 2 * INT_Z + 1), 0)
-    ranura = box((OREJA_X - NERVIO / 2, (SERVO_Y0 + H + FONDO + 10) / 2, EJE_Z + SERVO_L / 2 - SERVO_EJE_PUNTA),
-                 (NERVIO + 2, FONDO - SERVO_Y0 + 10, max(SERVO_L + 2 * H, PLACA_Z + 2 * H + 0.6)), 0)   # (v1.2) deja pasar la placa
+    # (v1.2.1) la ranura arranca 1 mm antes del nervio: antes empezaba en SERVO_Y0 + H y dejaba una lámina de
+    # 0,15 mm cruzando de lado a lado que tapaba el paso de la placa
+    ranura = box((OREJA_X - NERVIO / 2, (SERVO_Y0 - 1 + FONDO + 10) / 2, EJE_Z + SERVO_L / 2 - SERVO_EJE_PUNTA),
+                 (NERVIO + 2, FONDO - SERVO_Y0 + 11, max(SERVO_L + 2 * H, PLACA_Z + 2 * H + 0.6)), 0)   # (v1.2) deja pasar la placa
     s = union(s, subtract(nervio, ranura))
     # topes: la torre del engranaje apoya en la pared derecha; agujero del eje + ranura para entrar
     s = subtract(s, cylinder((EXT_X - PARED / 2, EJE_Y, EJE_Z), 4.6, PARED + 2, axis='x'))
