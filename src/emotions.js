@@ -30,7 +30,8 @@ export const ROBOT_ACTIONS = ['apagon', 'risa', 'lagrima', 'colmillos', 'tercerO
 // Gestos: de cabeza (cuello de 2 servos) y de brazos (un servo por hombro). El firmware tiene la coreografía de cada uno.
 export const GESTURES = [
   // cabeza (servos del cuello)
-  'asentir', 'negar', 'mirarArriba', 'mirarAbajo', 'mirarIzquierda', 'mirarDerecha', 'ladear',
+  'asentir', 'negar', 'mirarArriba', 'mirarAbajo', 'mirarIzquierda', 'mirarDerecha',
+  'mirarArribaIzq', 'mirarArribaDer', 'mirarAbajoIzq', 'mirarAbajoDer', 'ladear',
   // brazos (servos de los hombros)
   'saludar', 'festejar', 'aplaudir', 'hombros', 'taparse', 'abrazo', 'bailar', 'senalar',
 ];

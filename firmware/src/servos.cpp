@@ -16,6 +16,11 @@ static const Servos::Key ARRIBA[] = {{0, {X, 20, X, X}}, {1200, {X, 0, X, X}}};
 static const Servos::Key ABAJO[] = {{0, {X, -20, X, X}}, {1200, {X, 0, X, X}}};
 static const Servos::Key IZQ[] = {{0, {40, X, X, X}}, {1200, {0, X, X, X}}};
 static const Servos::Key DER[] = {{0, {-40, X, X, X}}, {1200, {0, X, X, X}}};
+// diagonales: giro + cabeceo a la vez (los dos servos del cuello)
+static const Servos::Key ARR_IZQ[] = {{0, {35, 18, X, X}}, {1200, {0, 0, X, X}}};
+static const Servos::Key ARR_DER[] = {{0, {-35, 18, X, X}}, {1200, {0, 0, X, X}}};
+static const Servos::Key ABA_IZQ[] = {{0, {35, -18, X, X}}, {1200, {0, 0, X, X}}};
+static const Servos::Key ABA_DER[] = {{0, {-35, -18, X, X}}, {1200, {0, 0, X, X}}};
 static const Servos::Key LADEAR[] = {{0, {15, 12, X, X}}, {1200, {0, 0, X, X}}};
 static const Servos::Key SALUDAR[] = {{0, {-10, 5, X, 130}}, {450, {X, X, X, 100}}, {750, {X, X, X, 140}}, {1050, {X, X, X, 100}}, {1350, {X, X, X, 140}},
                                       {1750, {0, 0, X, 0}}};
@@ -36,7 +41,8 @@ static const struct {
   const Servos::Key *keys;
   int n;
 } GESTURES[] = {G("asentir", ASENTIR), G("negar", NEGAR),       G("mirarArriba", ARRIBA), G("mirarAbajo", ABAJO), G("mirarIzquierda", IZQ),
-                G("mirarDerecha", DER),  G("ladear", LADEAR),    G("saludar", SALUDAR),    G("festejar", FESTEJAR), G("aplaudir", APLAUDIR),
+                G("mirarDerecha", DER),  G("mirarArribaIzq", ARR_IZQ), G("mirarArribaDer", ARR_DER),
+                G("mirarAbajoIzq", ABA_IZQ), G("mirarAbajoDer", ABA_DER), G("ladear", LADEAR),    G("saludar", SALUDAR),    G("festejar", FESTEJAR), G("aplaudir", APLAUDIR),
                 G("hombros", HOMBROS),  G("taparse", TAPARSE),  G("abrazo", ABRAZO),      G("bailar", BAILAR),     G("senalar", SENALAR)};
 
 void Servos::begin() {
