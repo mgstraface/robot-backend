@@ -68,6 +68,8 @@ BASE_TOP = -27.5                         # deja inclinar ±25° sin chocar
 BASE_ESP = 5.5                           # (v1.3) era 4,5 (misma razón)
 HORN_PROF = 1.9 + H + 0.1                # bracito blanco (1,9 mm) metido en la pieza
 HUB_PROF = 3.0 + H + 0.1                 # (v1.3) el centro redondo del bracito tiene 3,0 mm (medido 4/11), no 1,9
+RAMPA = 9.0 - 7.2 / 2 + H + 0.25         # (v1.3) del lado de la muesca, el centro tiene una rampita hacia el brazo:
+                                         # 9,0 mm desde el borde del círculo (Ø 7,2) → zona honda hasta 5,8 del centro
 HUB = 7.7 + 2 * H + 0.3                  # centro del bracito de 1 punta (7,7 medido)
 HORN_L = 18.5                            # del centro a la punta (17,7 medido)
 HORN_W = 7.2                             # ancho del brazo (con aire)
@@ -187,6 +189,7 @@ def cuello_u():
     # brazo derecho: hueco para el bracito blanco de 1 punta (mirando hacia abajo) + agujero del tornillo central
     hx = BRAZO_IN + HORN_PROF / 2 - 0.01
     s = subtract(s, cylinder((BRAZO_IN + HUB_PROF / 2 - 0.01, EJE_Y, EJE_Z), HUB / 2, HUB_PROF, axis='x'))
+    s = subtract(s, box((BRAZO_IN + HUB_PROF / 2 - 0.01, EJE_Y, EJE_Z - RAMPA / 2), (HUB_PROF, HUB, RAMPA), 0))   # rampita
     largo = HORN_L
     brazo_horn = box((hx, EJE_Y, EJE_Z - largo / 2), (HORN_PROF, HORN_W, largo), 0)
     s = subtract(s, brazo_horn)
@@ -200,6 +203,7 @@ def cuello_u():
     # abajo: hueco para el bracito de 2 puntas del servo del NO (a lo largo de x) + tornillo central
     z0 = BASE_TOP - BASE_ESP
     s = subtract(s, cylinder((0, EJE_Y, z0), HUB / 2, 2 * HUB_PROF, axis='z'))
+    s = subtract(s, box((RAMPA / 2, EJE_Y, z0), (RAMPA, HUB, 2 * HUB_PROF), 0))   # rampita
     s = subtract(s, box((HORN_L / 2, EJE_Y, z0), (HORN_L, HORN_W, 2 * HORN_PROF), 0))   # (v1.2) bracito de 1 punta hacia +x
     s = subtract(s, cylinder((0, EJE_Y, BASE_TOP), 1.3, BASE_ESP * 3, axis='z'))
     # paso de cables de la cabeza hacia el cuerpo
