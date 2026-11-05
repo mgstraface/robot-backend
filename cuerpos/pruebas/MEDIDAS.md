@@ -43,3 +43,4 @@
 - Decidido: ventanita en la espalda para ver el display de % del X7 (USB-C y botón S1 al lado).
 - Touch TTP223 (placa roja): 15,2 × 10,7 mm · espesor 2,1 mm (sin pines). Pines (3) en la punta corta.
 - MPU6050 (GY-521, azul): 20,0 × 15,6 mm · alto 2,7 mm con componentes (sin pines). 2 agujeros de tornillo en las esquinas del lado opuesto a los pines.
+- Placa perforada: 40 × 60 mm · espesor 1,5 mm · 14 × 20 agujeros (paso 2,54), doble faz con agujeros sueltos (sin tiras), 4 agujeros de montaje en las esquinas. Se va a cortar a medida.
