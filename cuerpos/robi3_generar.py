@@ -38,8 +38,8 @@ piezas = [
     ('robi3_collar', R.collar, R.BOUNDS_COLLAR, IGUAL),
     ('robi3_cuerpo', C.carcasa, C.B_CARCASA, BOCA_ABAJO),
     ('robi3_cuerpo_tapa', C.tapa, C.B_TAPA, IGUAL),
-    ('robi3_brazo_der', lambda: C.brazo(1), C.b_brazo(1), DER_ABAJO),
-    ('robi3_brazo_izq', lambda: C.brazo(-1), C.b_brazo(-1), IZQ_ABAJO),
+    ('robi3_brazo_der', lambda: C.brazo(1), C.b_brazo(1), IZQ_ABAJO),
+    ('robi3_brazo_izq', lambda: C.brazo(-1), C.b_brazo(-1), DER_ABAJO),
 ]
 for nombre, f, b, orient in piezas:
     if SOLO and SOLO not in nombre:

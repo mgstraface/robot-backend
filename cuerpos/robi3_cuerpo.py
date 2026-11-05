@@ -79,7 +79,7 @@ def exterior():
 
 def interior():
     # abierto abajo (ahí va la tapa); arriba, cúpula concéntrica con la de afuera
-    return poroto(PARED, (Z_PISO - 6, Z_TOP), r_ab=0.5)
+    return poroto(PARED, (Z_PISO - 6, ZI_TOP), r_ab=0.5)
 
 
 def chaflan(f, punto, n):
@@ -113,7 +113,7 @@ NO_AGUJ_X = (NO_CX - ORE_AGUJ, NO_CX + ORE_AGUJ)         # -8,35 · 19,45
 
 # Servos de los brazos: eje a lo largo de x, cuerpo parado, delante del servo del NO
 BR_Y = 8.5                                               # cuerpo y 2,5 .. 14,5
-BR_TOP = -43.7                                           # punta de arriba del cuerpo (orejita hasta -39)
+BR_TOP = -45.2                                           # punta de arriba del cuerpo (orejita hasta -39)
 BR_EJE_Z = BR_TOP - EJE_PUNTA                            # -49,6: el hombro
 BR_BOT = BR_TOP - SL                                     # -66,6
 BR_CZ = (BR_TOP + BR_BOT) / 2
@@ -230,7 +230,9 @@ def carcasa():
     # la guía cuelga de un brazo que llega a la pared izquierda (por delante de la pila)
     brazo_g = bloque((-HX, PILA_X[1] + 1.6), (PILA_Y[0] - 1.6, PILA_Y[0] - H), (g1 - 12, g1))
     brazo_g = chaflan(brazo_g, (-HX + PARED + 0.5, 0, g1), (1, 0, 1))
-    s = union(s, dentro(union(guia, brazo_g)))
+    # costilla vertical hasta el techo: la guía no se puede apoyar en el aire (se imprime boca abajo)
+    costilla = bloque((PILA_X[1] - 6, PILA_X[1] + 1.6), (PILA_Y[0] - 1.2, PILA_Y[0] - H), (g1 - 3, ZI_TOP + 1.0))
+    s = union(s, dentro(union(guia, brazo_g, costilla)))
 
     # --- X7: 2 costillas desde la espalda + ventanita + USB-C por la pared derecha
     yb = medidas_a(X7_Z0, PARED)[3]
@@ -327,10 +329,15 @@ def tapa():
 
 
 # ======================================================== BRAZO curvo (se imprime acostado, la cara de afuera en la cama)
-BRAZO_LARGO = 44.0           # del hombro a la punta de la mano
+BRAZO_LARGO = 52.0           # del hombro a la punta de la mano (paleta tipo Eilik)
 BRAZO_X0 = BR_TAPA_X + TORRE + 0.4       # cara de adentro (apoya sobre la torre del servo): 34,0
-BRAZO_ESP = 6.0              # espesor en el hombro (se afina a 4,5 en la mano)
-BRAZO_AVANCE = 8.0           # cuánto se va la mano hacia adelante
+BRAZO_ESP = 8.0              # espesor máximo de la cúpula en el hombro (se afina a 5 en la mano)
+BRAZO_AVANCE = 11.0          # cuánto se va la mano hacia adelante (curva de media luna)
+
+
+def _semi(t):
+    """Medio ancho (en y-z) de la paleta a lo largo del brazo, t = 0 hombro .. 1 punta."""
+    return 6.6 + 4.0 * np.sin(np.pi * np.clip(t, 0, 1) ** 0.75)
 
 
 def _curva(t):
@@ -346,27 +353,33 @@ def brazo(sx=1):
         d = np.sqrt((Y - BR_Y) ** 2 + (Z - BR_EJE_Z) ** 2) - 7.0
         for i in range(n):
             (ya, za), (yb, zb) = pts[i], pts[i + 1]
-            ra, rb = 6.6 - 2.8 * i / n, 6.6 - 2.8 * (i + 1) / n
+            ra, rb = _semi(i / n), _semi((i + 1) / n)
             by, bz = yb - ya, zb - za
             h = np.clip(((Y - ya) * by + (Z - za) * bz) / (by * by + bz * bz), 0, 1)
             seg = np.sqrt((Y - ya - by * h) ** 2 + (Z - za - bz * h) ** 2) - (ra + (rb - ra) * h)
-            k = 1.5
+            k = 3.0
             hh = np.clip(0.5 + 0.5 * (seg - d) / k, 0, 1)
             d = seg + (d - seg) * hh - k * hh * (1 - hh)
         ym, zm = pts[-1]
-        mano = np.sqrt((Y - ym + 0.8) ** 2 + (Z - zm + 1.0) ** 2) - 5.0
+        mano = np.sqrt((Y - ym + 0.5) ** 2 + (Z - zm + 0.5) ** 2) - 6.4
         hh = np.clip(0.5 + 0.5 * (mano - d) / 2.0, 0, 1)
         return mano + (d - mano) * hh - 2.0 * hh * (1 - hh)
 
-    xo = BRAZO_X0 + BRAZO_ESP                 # cara de afuera (plana, va contra la cama)
-    re = 1.8                                  # cantos redondeados
+    xo = BRAZO_X0 + BRAZO_ESP                 # tope de la cúpula en el hombro (para el tornillo)
+    re = 0.9                                  # cantos redondeados
+    R_CUPULA = 7.5                            # a esta distancia del borde la cúpula llega a su espesor máximo
+    H_BORDE = 1.2                             # espesor en el borde de la paleta
 
     def f(p):
         X, Z = sx * p[..., 0], p[..., 2]
-        xi = BRAZO_X0 + 1.5 * np.clip((BR_EJE_Z - 20 - Z) / 22, 0, 1)
-        xc, hx = (xi + xo) / 2, (xo - xi) / 2
-        u = perfil(p) + re
-        v = np.abs(X - xc) - hx + re
+        u0 = perfil(p)
+        # espesor máximo: BRAZO_ESP en el hombro, se afina 3 mm hacia la punta
+        T = BRAZO_ESP - 3.0 * np.clip((BR_EJE_Z - Z) / BRAZO_LARGO, 0, 1)
+        sdist = np.clip(-u0 / R_CUPULA, 0, 1)
+        h = H_BORDE + (T - H_BORDE) * np.sqrt(1 - (1 - sdist) ** 2)     # perfil de media elipse
+        xi = BRAZO_X0                                                    # cara de adentro: PLANA
+        u = u0 + re
+        v = np.maximum(xi - X, X - (xi + h)) + re
         return np.minimum(np.maximum(u, v), 0) + np.sqrt(np.maximum(u, 0) ** 2 + np.maximum(v, 0) ** 2) - re
 
     s = f
@@ -387,7 +400,7 @@ def brazo(sx=1):
 
 B_CARCASA = ((-HX - 1, CY - HY - 1, Z_PISO - 1), (HX + 1, CY + HY + 1, Z_TOP + 1))
 B_TAPA = ((-HX - 1, CY - HY - 1, Z_BOT - 1), (HX + 1, CY + HY + 1, PERFO['z'][0] + 11))
-B_BRAZO = ((BRAZO_X0 - 1, BR_Y - BRAZO_AVANCE - 7, BR_EJE_Z - BRAZO_LARGO - 2), (BRAZO_X0 + BRAZO_ESP + 1, BR_Y + 8, BR_EJE_Z + 8))
+B_BRAZO = ((BRAZO_X0 - 1, BR_Y - BRAZO_AVANCE - 12, BR_EJE_Z - BRAZO_LARGO - 2), (BRAZO_X0 + BRAZO_ESP + 1, BR_Y + 14, BR_EJE_Z + 10))
 
 
 def b_brazo(sx):
