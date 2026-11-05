@@ -73,6 +73,7 @@ RAMPA = 9.0 - 7.2 / 2 + H + 0.25         # (v1.3) del lado de la muesca, el cent
 HUB = 7.7 + 2 * H + 0.3                  # centro del bracito de 1 punta (7,7 medido)
 HORN_L = 18.5                            # del centro a la punta (17,7 medido)
 HORN_W = 7.2                             # ancho del brazo (con aire)
+NUCA_X, NUCA_Z = -10.6, 0.0                # (v1.3) centro del touch de la nuca (dentro de la tapa)
 OREJA_R, OREJA_SALE = 6.0, 0.9           # "orejitas" redondas alrededor del eje: centran la cabeza en la U
 
 
@@ -166,6 +167,8 @@ def cabeza_tapa():
     # muesca para que la pestaña no choque con el nervio del servo ni con la ranura de salida de cables
     s = subtract(s, box((OREJA_X - NERVIO / 2, FONDO - 1, 0), (NERVIO + 2 * H + 0.4, 3, 2 * INT_Z + 2), 0))
     s = subtract(s, box((-12, FONDO - 1.5, -EXT_Z + 2), (9.5, 4, 5), 0))
+    # (v1.3) touch de la nuca: tapa adelgazada a 1 mm del lado izquierdo (los cables salen por el agujero de abajo)
+    s = subtract(s, box((NUCA_X, FONDO, NUCA_Z), (10.7 + 2 * H + 0.6, 2.0, 15.2 + 2 * H + 0.6), 0.5))
     # rejilla de ventilación / decorado: 3 ranuras
     for z in (-6, 0, 6):
         s = subtract(s, box((8, FONDO + TAPA / 2, z), (14, TAPA + 2, 2.0), 1.0))
