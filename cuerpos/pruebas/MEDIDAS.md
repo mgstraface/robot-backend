@@ -36,5 +36,6 @@
 - Portapila 18650 con la pila: largo 76,1 · ancho 21,0 · alto 19,9 mm. Cables salen por las dos puntas (rojo y negro).
 - Módulo de carga X7 (placa violeta V2138, con display de %, USB-C de entrada, USB-A de salida atrás, botón S1 al costado):
   - Espesor total con el USB-A de atrás: 12,2 mm
-  - Otras medidas tomadas (a confirmar a qué corresponden): 28,4 · 34,5 · 19,1 mm
+  - Ancho 28,4 mm · largo total 34,5 mm (con el USB-C que sobresale)
+  - Del comienzo del USB-C al botón S1: 19,1 mm
 - Cable DuPont: Ø 1,2 mm (14–16 entran en el agujero de la U).
