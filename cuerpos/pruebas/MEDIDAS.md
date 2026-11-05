@@ -41,3 +41,4 @@
 - Cable DuPont: Ø 1,2 mm (14–16 entran en el agujero de la U).
 - Micrófono INMP441 (placa redonda, 6 agujeros): Ø 14,1 mm · espesor 1,9 mm (sin pines).
 - Decidido: ventanita en la espalda para ver el display de % del X7 (USB-C y botón S1 al lado).
+- Touch TTP223 (placa roja): 15,2 × 10,7 mm · espesor 2,1 mm (sin pines). Pines (3) en la punta corta.
