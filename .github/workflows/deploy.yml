@@ -1,0 +1,28 @@
+name: Deploy al VPS
+
+# main → producción (robot.malestraface.com) · dev → pruebas (dev.robot.malestraface.com)
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch: # permite correrlo a mano desde la pestaña Actions (elegís la rama)
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Deploy por SSH (${{ github.ref_name == 'dev' && 'pruebas' || 'producción' }})
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 20m
+          # En el VPS la clave está restringida a correr solo el script de deploy;
+          # el script lee de acá qué entorno desplegar.
+          script: bash /root/robot/robot-backend/scripts/deploy-vps.sh ${{ github.ref_name == 'dev' && 'dev' || 'prod' }}
