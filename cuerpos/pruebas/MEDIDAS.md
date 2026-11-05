@@ -39,3 +39,5 @@
   - Ancho 28,4 mm · largo total 34,5 mm (con el USB-C que sobresale)
   - Del comienzo del USB-C al botón S1: 19,1 mm
 - Cable DuPont: Ø 1,2 mm (14–16 entran en el agujero de la U).
+- Micrófono INMP441 (placa redonda, 6 agujeros): Ø 14,1 mm · espesor 1,9 mm (sin pines).
+- Decidido: ventanita en la espalda para ver el display de % del X7 (USB-C y botón S1 al lado).
