@@ -131,8 +131,9 @@ def cabeza_frente():
         s = union(s, t)
         s = subtract(s, cylinder((TORRE_TX, FONDO - 4, z), 0.85, 9, axis='y'))
     s = intersect(s, ext)   # nada de lo de adentro puede asomar por afuera
-    # orejitas: aros redondos alrededor del eje, de los dos lados
-    for sx in (-1, 1):
+    # orejita: aro redondo alrededor del eje. (v1.2.2) solo del lado de la bisagra (−x): del lado del servo
+    # no dejaba que la U se arrimara y el bracito agarraba apenas la puntita del eje (probado 5/11)
+    for sx in (-1,):
         o = cylinder((sx * (EXT_X + OREJA_SALE / 2 - 0.3), EJE_Y, EJE_Z), OREJA_R, OREJA_SALE + 0.6, axis='x')
         s = union(s, o)
     s = subtract(s, cylinder((EXT_X, EJE_Y, EJE_Z), 4.6, 2 * PARED + 4, axis='x'))   # paso del eje/bracito
