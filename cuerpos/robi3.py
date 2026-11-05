@@ -87,6 +87,7 @@ R_ATRAS = 5.0
 COLLAR_R = 12.5
 COLLAR_Z1 = -26.3                                       # arriba del collar (la cara, al asentir, baja hasta ~-25,5)
 COLLAR_Z0 = COLLAR_Z1 - 4.5                             # -30,8
+CABLE_R = 9.3                                          # agujero de los cables: a 9,3 mm del eje, atrás
 TACO = 7.0                                              # taco cuadrado del collar que entra en el cuello
 
 # torres de los tornillos de la tapa (arriba, colgadas del techo)
@@ -268,8 +269,9 @@ def collar():
     s = subtract(s, cylinder((0, EJE_Y, COLLAR_Z0), 1.3, 20))
     s = subtract(s, cylinder((0, EJE_Y, COLLAR_Z1 + 3.0), 2.5, 2 * (3.0 + 2.6)))
     s = subtract(s, cylinder((0, EJE_Y + 3, COLLAR_Z1 + 2.0), 0.85, 6, axis='y'))
-    # agujero para los cables que bajan de la cabeza
-    s = subtract(s, box((-8.0, EJE_Y, (COLLAR_Z0 + COLLAR_Z1) / 2), (5.5, 9.0, 10), 2.0))
+    # agujero para los cables que bajan de la cabeza: atrás (90°), sobre la medialuna del techo del cuerpo
+    # (a la izquierda estaba justo encima del pilar del servo del NO)
+    s = subtract(s, box((0, EJE_Y + CABLE_R, (COLLAR_Z0 + COLLAR_Z1) / 2), (6.0, 3.5, 10), 1.5))
     return s
 
 

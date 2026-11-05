@@ -12,8 +12,8 @@ static const int16_t X = 999;                  // "no tocar" en una coreografía
 //                    t      pan  tilt armL armR
 static const Servos::Key ASENTIR[] = {{0, {X, 14, X, X}}, {250, {X, -8, X, X}}, {500, {X, 14, X, X}}, {750, {X, -8, X, X}}, {1000, {X, 0, X, X}}};
 static const Servos::Key NEGAR[] = {{0, {30, X, X, X}}, {300, {-30, X, X, X}}, {600, {30, X, X, X}}, {900, {-30, X, X, X}}, {1200, {0, X, X, X}}};
-static const Servos::Key ARRIBA[] = {{0, {X, 20, X, X}}, {1200, {X, 0, X, X}}};
-static const Servos::Key ABAJO[] = {{0, {X, -20, X, X}}, {1200, {X, 0, X, X}}};
+static const Servos::Key ARRIBA[] = {{0, {X, 18, X, X}}, {1200, {X, 0, X, X}}};
+static const Servos::Key ABAJO[] = {{0, {X, -18, X, X}}, {1200, {X, 0, X, X}}};
 static const Servos::Key IZQ[] = {{0, {40, X, X, X}}, {1200, {0, X, X, X}}};
 static const Servos::Key DER[] = {{0, {-40, X, X, X}}, {1200, {0, X, X, X}}};
 // diagonales: giro + cabeceo a la vez (los dos servos del cuello)
