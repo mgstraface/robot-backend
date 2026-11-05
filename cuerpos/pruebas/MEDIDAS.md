@@ -45,3 +45,5 @@
 - MPU6050 (GY-521, azul): 20,0 × 15,6 mm · alto 2,7 mm con componentes (sin pines). 2 agujeros de tornillo en las esquinas del lado opuesto a los pines.
 - Placa perforada: 40 × 60 mm · espesor 1,5 mm · 14 × 20 agujeros (paso 2,54), doble faz con agujeros sueltos (sin tiras), 4 agujeros de montaje en las esquinas. Se va a cortar a medida.
 - Amplificador MAX98357A (placa violeta): 17,7 × 17,7 mm · espesor 2,1 mm. Trae bornera verde aparte (7,0 × 6,7 × 12,1 con patitas): no se usa, el parlante va soldado directo.
+- Capacitor 1000 µF: Ø 10,0 × 19,6 mm (sin patitas). Va acostado en la perfo.
+- Diodos (cuerpo negro con patitas axiales): largo del cuerpo 5,0 mm. Modelo a confirmar (leer la inscripción).
