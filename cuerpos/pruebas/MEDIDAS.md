@@ -42,3 +42,4 @@
 - Micrófono INMP441 (placa redonda, 6 agujeros): Ø 14,1 mm · espesor 1,9 mm (sin pines).
 - Decidido: ventanita en la espalda para ver el display de % del X7 (USB-C y botón S1 al lado).
 - Touch TTP223 (placa roja): 15,2 × 10,7 mm · espesor 2,1 mm (sin pines). Pines (3) en la punta corta.
+- MPU6050 (GY-521, azul): 20,0 × 15,6 mm · alto 2,7 mm con componentes (sin pines). 2 agujeros de tornillo en las esquinas del lado opuesto a los pines.
