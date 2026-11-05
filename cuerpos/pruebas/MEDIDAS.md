@@ -47,3 +47,4 @@
 - Amplificador MAX98357A (placa violeta): 17,7 × 17,7 mm · espesor 2,1 mm. Trae bornera verde aparte (7,0 × 6,7 × 12,1 con patitas): no se usa, el parlante va soldado directo.
 - Capacitor 1000 µF: Ø 10,0 × 19,6 mm (sin patitas). Va acostado en la perfo.
 - Diodos (cuerpo negro con patitas axiales): largo del cuerpo 5,0 mm. Modelo a confirmar (leer la inscripción).
+- Parlante (módulo del S8+, en forma de L): espesor 4,0 mm · largo total 53,5 · ancho total 39,5 mm (medidas del 5/11; antes 52,9 y 38,7). El sonido sale por el canto: dos ranuritas en el borde corto de abajo de la caja (debajo de la chapa plateada).
