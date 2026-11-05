@@ -31,3 +31,10 @@
 - Placa: 10,5 mm del frente de la pantalla al fondo (USB / separadores); 15,0 mm con los pines.
 - Bracito de 1 punta: centro Ø 7,7 mm, largo total 21,6 mm (≈17,7 del centro a la punta), espesor 1,9.
 - El cilindrito del bracito entra por el agujero de la pared (Ø 9,2) y agarra el eje del servo del SÍ: el ancho de la U está bien.
+
+## Medidas del 5 nov 2026 (cuerpo)
+- Portapila 18650 con la pila: largo 76,1 · ancho 21,0 · alto 19,9 mm. Cables salen por las dos puntas (rojo y negro).
+- Módulo de carga X7 (placa violeta V2138, con display de %, USB-C de entrada, USB-A de salida atrás, botón S1 al costado):
+  - Espesor total con el USB-A de atrás: 12,2 mm
+  - Otras medidas tomadas (a confirmar a qué corresponden): 28,4 · 34,5 · 19,1 mm
+- Cable DuPont: Ø 1,2 mm (14–16 entran en el agujero de la U).
