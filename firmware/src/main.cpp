@@ -17,6 +17,7 @@
 #include "ca.h"
 #include "config.h"
 #include "face.h"
+#include "hwtest.h"
 #include "touch.h"
 #include "servos.h"
 #include "ui.h"
@@ -172,6 +173,7 @@ String wifiSsid[3], wifiPass[3];
 String robiHost, robiDevice, robiToken;
 int robiPort = 443;
 uint32_t lastPing = 0;
+String pendingTest;  // prueba de hardware pedida desde el panel (audio / micro / sensores)
 
 void sendJson(JsonDocument &doc) {
   String out;
@@ -205,6 +207,7 @@ void onServerMessage(const char *payload, size_t length) {
     String what = msg["what"] | "";
     if (what == "reiniciar") ESP.restart();
     if (what == "servos") servos.gesture("negar");
+    if (what == "audio" || what == "micro" || what == "sensores") pendingTest = what;  // se corre en loop()
     if (what == "pantalla") {
       face.setEmotion("feliz");
       face.showText("Prueba de pantalla", 3000);
@@ -521,6 +524,23 @@ void loop() {
     int b = otaPending;
     otaPending = 0;
     doOta(b);
+    return;
+  }
+  if (pendingTest.length()) {
+    String what = pendingTest;
+    pendingTest = "";
+    face.showText(what == "audio" ? "Prueba de parlante..." : what == "micro" ? "Hablale al microfono..." : "Toca cabeza, panza y espalda", 6000);
+    face.update(millis());
+    flushScreen();
+    String res = what == "audio" ? HwTest::audio() : what == "micro" ? HwTest::micro() : HwTest::sensores();
+    Serial.printf("[prueba] %s\n", res.c_str());
+    face.showText(res, 12000);
+    if (wsConnected) {
+      JsonDocument lg;
+      lg["type"] = "log";
+      lg["message"] = "prueba " + what + ": " + res;
+      sendJson(lg);
+    }
     return;
   }
   servos.update(now);

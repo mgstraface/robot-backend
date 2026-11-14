@@ -73,6 +73,11 @@ export const Settings = mongoose.model('Settings', settingsSchema);
 export function withDefaults(doc) {
   const s = { ...DEFAULT_SETTINGS, ...(doc || {}) };
   s.city = { ...DEFAULT_SETTINGS.city, ...(doc?.city || {}) };
+  // los 4 servos siempre presentes: si en la base quedó guardado solo uno, los demás salen con sus valores por defecto
+  s.servos = { ...DEFAULT_SETTINGS.servos };
+  for (const [name, cal] of Object.entries(doc?.servos || {})) {
+    if (cal && typeof cal === 'object') s.servos[name] = { ...(DEFAULT_SETTINGS.servos[name] || {}), ...cal };
+  }
   for (const k of Object.keys(s)) if (s[k] === null || s[k] === undefined) s[k] = DEFAULT_SETTINGS[k];
   return s;
 }
