@@ -400,7 +400,7 @@ router.get('/robot/token', (req, res) => res.json({ token: config.deviceToken })
 
 router.post('/robot/test', (req, res) => {
   const { what } = req.body || {};
-  if (!['pantalla', 'audio', 'servos', 'sensores', 'reiniciar'].includes(what)) return res.status(400).json({ error: 'Prueba inválida' });
+  if (!['pantalla', 'audio', 'micro', 'servos', 'sensores', 'reiniciar'].includes(what)) return res.status(400).json({ error: 'Prueba inválida' });
   res.json({ sentTo: broadcast({ type: 'test', what }) });
 });
 
