@@ -17,6 +17,7 @@ class Touch {
  public:
   bool begin();
   void poll(uint32_t now, TouchHandler &h);  // llamar seguido en loop()
+  bool ok() const { return ok_; }  // ¿respondió el chip al arrancar?
   void setFlipped(bool f) { flipped_ = f; }  // pantalla girada 180°
 
  private:
