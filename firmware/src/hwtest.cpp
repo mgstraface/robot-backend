@@ -128,6 +128,15 @@ String HwTest::sensores() {
   for (int i = 0; i < 3; i++) {
     out += String(" ") + names[i] + (seen[i] ? (stuck[i] ? "=siempre ON" : "=OK") : "=no");
   }
+  // todo lo que contesta en el I2C (la pantalla táctil es 0x63, el MPU 0x68)
+  out += " | I2C:";
+  int found = 0;
+  for (uint8_t a = 1; a < 127; a++)
+    if (i2cHas(a)) {
+      out += " 0x" + String(a, HEX);
+      found++;
+    }
+  if (!found) out += " nada (bus colgado: revisar SDA42/SCL41)";
   // MPU6050 (0x68 o 0x69) en el I2C de la placa
   uint8_t addr = i2cHas(0x68) ? 0x68 : (i2cHas(0x69) ? 0x69 : 0);
   if (!addr) {

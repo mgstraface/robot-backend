@@ -264,6 +264,7 @@ void sendStatus() {
   st["resetReason"] = resetReason();
   st["rssi"] = WiFi.RSSI();
   st["heap"] = ESP.getFreeHeap();
+  st["tactil"] = touch.ok() ? "ok" : "no responde";
   sendJson(st);
 }
 
