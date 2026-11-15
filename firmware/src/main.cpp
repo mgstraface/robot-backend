@@ -174,6 +174,28 @@ String wifiSsid[3], wifiPass[3];
 String robiHost, robiDevice, robiToken;
 int robiPort = 443;
 uint32_t lastPing = 0;
+// Sensores táctiles del cuerpo (TTP223: HIGH al tocar). Avisan al servidor en cada toque nuevo.
+static void pollBodyTouch(uint32_t now) {
+  static const int pins[3] = {PIN_TOUCH_CABEZA, PIN_TOUCH_PANZA, PIN_TOUCH_ESPALDA};
+  static const char *zones[3] = {"cabeza", "panza", "espalda"};
+  static bool was[3] = {false, false, false};
+  static uint32_t last[3] = {0, 0, 0};
+  for (int i = 0; i < 3; i++) {
+    bool on = digitalRead(pins[i]) == HIGH;
+    if (on && !was[i] && now - last[i] > 600) {  // flanco de subida, con pausa para no repetir
+      last[i] = now;
+      Serial.printf("[toque] %s\n", zones[i]);
+      if (wsConnected) {
+        JsonDocument t;
+        t["type"] = "touch";
+        t["zone"] = zones[i];
+        sendJson(t);
+      }
+    }
+    was[i] = on;
+  }
+}
+
 String pendingTest;  // prueba de hardware pedida desde el panel (audio / micro / sensores)
 
 void speakerTalking(bool on) { face.setTalking(on); }
@@ -453,6 +475,9 @@ void setup() {
   servos.begin();
   ui.begin(canvas, &face, sendJson);  // también prende la luz de fondo (con el brillo guardado)
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+  pinMode(PIN_TOUCH_CABEZA, INPUT);
+  pinMode(PIN_TOUCH_PANZA, INPUT);
+  pinMode(PIN_TOUCH_ESPALDA, INPUT);
   touch.begin();
   face.showText("Conectando al WiFi...", 15000);
   face.update(millis());
@@ -552,6 +577,7 @@ void loop() {
     return;
   }
   speaker.update();
+  pollBodyTouch(now);
   if (pendingTest.length() && !speaker.busy()) {
     String what = pendingTest;
     pendingTest = "";
