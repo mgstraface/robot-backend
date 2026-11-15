@@ -21,7 +21,15 @@ app.use((req, res) => res.status(404).json({ error: 'No encontrado' }));
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(err.status || 500).json({ error: err.message || 'Error interno' });
+  // Un 401/403 que viene de un servicio de afuera (IA, voz…) no es del panel: si lo devolvemos tal cual,
+  // el panel cree que la clave de admin está mal y cierra la sesión. Lo pasamos como 502 con el mensaje real.
+  let status = Number(err.status) >= 400 && Number(err.status) < 600 ? Number(err.status) : 500;
+  let message = err.message || 'Error interno';
+  if (status === 401 || status === 403) {
+    status = 502;
+    message = `Falló un servicio externo (${err.status}): ${message}`;
+  }
+  res.status(status).json({ error: message });
 });
 
 const server = http.createServer(app);
