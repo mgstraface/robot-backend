@@ -8,7 +8,7 @@ import { cocinaAccion, getCocina } from '../services/cocina.js';
 import { latestFirmware } from '../services/firmware.js';
 import { moodEvent } from '../services/mood.js';
 import { cocinaParaRobot, handleMenu } from './robotMenu.js';
-import { sttEnabled, synthesizeAudio, transcribe, ttsEnabled } from '../services/voice.js';
+import { audioForRobot, sttEnabled, synthesizeAudio, transcribe, ttsEnabled } from '../services/voice.js';
 
 /*
  * Protocolo robot ⇄ servidor (ver README para el detalle):
@@ -99,7 +99,8 @@ export function setEmotion(deviceId, emotion) {
 }
 
 /** Manda el audio en pedazos. format: 'pcm' (con sampleRate) o 'mp3' (el robot lo decodifica). */
-async function streamAudio(ws, { format, data, sampleRate }) {
+async function streamAudio(ws, audio) {
+  const { format, data, sampleRate } = await audioForRobot(audio);
   send(ws, { type: 'audio_start', format, sampleRate, bytes: data.length });
   for (let i = 0; i < data.length; i += AUDIO_CHUNK_BYTES) {
     if (ws.readyState !== ws.OPEN) return;

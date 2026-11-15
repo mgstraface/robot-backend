@@ -1,5 +1,8 @@
 FROM node:22-alpine
 
+# ffmpeg: pasa la voz (MP3 de Edge) a PCM para el parlante del robot
+RUN apk add --no-cache ffmpeg
+
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev --no-audit --no-fund

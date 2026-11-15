@@ -20,6 +20,7 @@
 #include "hwtest.h"
 #include "touch.h"
 #include "servos.h"
+#include "speaker.h"
 #include "ui.h"
 #include "wifiportal.h"
 
@@ -175,6 +176,8 @@ int robiPort = 443;
 uint32_t lastPing = 0;
 String pendingTest;  // prueba de hardware pedida desde el panel (audio / micro / sensores)
 
+void speakerTalking(bool on) { face.setTalking(on); }
+
 void sendJson(JsonDocument &doc) {
   String out;
   serializeJson(doc, out);
@@ -231,6 +234,10 @@ void onServerMessage(const char *payload, size_t length) {
     touch.setFlipped(girada);
     face.invalidate();
     flushScreen();
+  } else if (!strcmp(type, "audio_start")) {
+    speaker.onStart(msg["bytes"] | 0, msg["sampleRate"] | 24000, String(msg["format"] | "") == "pcm");
+  } else if (!strcmp(type, "audio_end")) {
+    speaker.onEnd();
   } else if (!strcmp(type, "talking")) {
     face.setTalking(msg["on"] | false);
   } else if (!strcmp(type, "cocina") || !strcmp(type, "recetas")) {
@@ -290,7 +297,11 @@ void onWsEvent(WStype_t type, uint8_t *payload, size_t length) {
       sendStatus();
       break;
     }
+    case WStype_BIN:
+      speaker.onData(payload, length);
+      break;
     case WStype_DISCONNECTED:
+      speaker.abort();
       if (wsConnected) face.showText("Sin conexion con el servidor...", 4000);
       wsConnected = false;
       ui.setOnline(false);
@@ -527,7 +538,8 @@ void loop() {
     doOta(b);
     return;
   }
-  if (pendingTest.length()) {
+  speaker.update();
+  if (pendingTest.length() && !speaker.busy()) {
     String what = pendingTest;
     pendingTest = "";
     face.showText(what == "audio" ? "Prueba de parlante..." : what == "micro" ? "Hablale al microfono..." : "Toca cabeza, panza y espalda", 6000);
