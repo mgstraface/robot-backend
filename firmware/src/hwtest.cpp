@@ -81,32 +81,42 @@ String HwTest::audio() {
 String HwTest::micro() {
   if (!i2sStart(true)) return "Mic: no arranco el I2S";
   int32_t buf[256 * 2];
-  double sum = 0, sumL = 0, sumR = 0;
+  // por canal: media (DC), desvío (la parte que cambia = el sonido), mínimo y máximo, en 24 bits
+  double sum[2] = {0, 0}, sq[2] = {0, 0};
+  int32_t mn[2] = {INT32_MAX, INT32_MAX}, mx[2] = {INT32_MIN, INT32_MIN};
+  uint32_t sample[2] = {0, 0};
   long n = 0;
-  int32_t peak = 0;
   uint32_t t0 = millis();
   size_t got;
   while (millis() - t0 < 2000) {
     if (i2s_read(PORT, buf, sizeof(buf), &got, 500) != ESP_OK) continue;
     int frames = got / 8;
     for (int i = 0; i < frames; i++) {
-      int32_t l = buf[2 * i] >> 8;      // INMP441: 24 bits en palabra de 32
-      int32_t r = buf[2 * i + 1] >> 8;
       if (millis() - t0 < 300) continue;  // descarta el arranque
-      sumL += (double)l * l;
-      sumR += (double)r * r;
-      sum += (double)l * l;
-      if (abs(l) > peak) peak = abs(l);
+      for (int c = 0; c < 2; c++) {
+        int32_t v = buf[2 * i + c] >> 8;  // INMP441: 24 bits en palabra de 32
+        sum[c] += v;
+        sq[c] += (double)v * v;
+        if (v < mn[c]) mn[c] = v;
+        if (v > mx[c]) mx[c] = v;
+        sample[c] = (uint32_t)buf[2 * i + c];
+      }
       n++;
     }
   }
   i2sStop();
   if (!n) return "Mic: no llegaron datos";
-  float rmsL = sqrt(sumL / n), rmsR = sqrt(sumR / n);
-  Serial.printf("[mic] rmsL=%.0f rmsR=%.0f pico=%d\n", rmsL, rmsR, (int)peak);
-  if (rmsL < 1 && rmsR < 1) return "Mic: todo en 0 (revisar SD->GPIO7, VDD y GND)";
-  String lado = rmsL >= rmsR ? "izq" : "der";
-  return "Mic OK (" + lado + ") nivel " + String((int)max(rmsL, rmsR)) + " pico " + String((int)peak);
+  String out = "Mic";
+  const char *name[2] = {"izq", "der"};
+  float ac[2];
+  for (int c = 0; c < 2; c++) {
+    double mean = sum[c] / n;
+    ac[c] = sqrt(max(0.0, sq[c] / n - mean * mean));
+    Serial.printf("[mic] %s dc=%.0f ac=%.0f min=%d max=%d raw=0x%08X\n", name[c], mean, ac[c], (int)mn[c], (int)mx[c], (unsigned)sample[c]);
+    out += String(" | ") + name[c] + ": dc " + String((long)mean) + " ac " + String((long)ac[c]) + " min " + String((long)mn[c]) + " max " + String((long)mx[c]);
+  }
+  if (ac[0] < 1 && ac[1] < 1) out += " -> todo quieto (revisar SD->GPIO7, VDD y GND)";
+  return out;
 }
 
 static bool i2cHas(uint8_t addr) {
