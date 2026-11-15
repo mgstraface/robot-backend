@@ -198,31 +198,35 @@ void listenerFace(const char *emotion) { face.setEmotion(emotion); }
 
 // Sensores táctiles del cuerpo (TTP223: HIGH al tocar). Avisan al servidor en cada toque nuevo;
 // dos toques seguidos en la panza = "hablale" (empieza a escuchar).
+static void sendTouch(const char *zone) {
+  JsonDocument t;
+  t["type"] = "touch";
+  t["zone"] = zone;
+  sendJson(t);
+}
+
 static void pollBodyTouch(uint32_t now) {
   static const int pins[3] = {PIN_TOUCH_CABEZA, PIN_TOUCH_PANZA, PIN_TOUCH_ESPALDA};
   static const char *zones[3] = {"cabeza", "panza", "espalda"};
   static bool was[3] = {false, false, false};
   static uint32_t lastEdge[3] = {0, 0, 0}, lastSent[3] = {0, 0, 0};
-  static uint32_t panzaPrev = 0;
+  static uint32_t panzaPrev = 0;  // primer toque en la panza, todavía sin avisar
+  // un toque suelto en la panza se avisa recién cuando pasó la ventana del doble toque
+  if (panzaPrev && now - panzaPrev >= 900) {
+    panzaPrev = 0;
+    if (wsConnected) sendTouch("panza");
+  }
   for (int i = 0; i < 3; i++) {
     bool on = digitalRead(pins[i]) == HIGH;
     if (on && !was[i] && now - lastEdge[i] > 80) {  // flanco de subida
       lastEdge[i] = now;
       Serial.printf("[toque] %s\n", zones[i]);
       if (i == 1) {
-        if (panzaPrev && now - panzaPrev < 900 && wsConnected && listener.start()) {
-          panzaPrev = 0;
-          was[i] = on;
-          continue;  // doble toque: ya está escuchando, no manda el toque suelto
-        }
-        panzaPrev = now;
-      }
-      if (wsConnected && now - lastSent[i] > 600) {  // pausa para no repetir al servidor
+        if (panzaPrev && wsConnected && listener.start()) panzaPrev = 0;  // doble toque: escucha
+        else if (!panzaPrev) panzaPrev = now;
+      } else if (wsConnected && now - lastSent[i] > 600) {
         lastSent[i] = now;
-        JsonDocument t;
-        t["type"] = "touch";
-        t["zone"] = zones[i];
-        sendJson(t);
+        sendTouch(zones[i]);
       }
     }
     was[i] = on;

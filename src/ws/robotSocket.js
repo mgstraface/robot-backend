@@ -188,6 +188,10 @@ async function handleJson(deviceId, device, msg) {
       }
       send(ws, { type: 'emotion', emotion: 'pensando' });
       const transcript = await transcribe(pcm);
+      let sum = 0;
+      for (let i = 0; i + 1 < pcm.length; i += 2) sum += pcm.readInt16LE(i) ** 2;
+      const rms = Math.round(Math.sqrt(sum / (pcm.length / 2)));
+      console.log(`[oido] ${(pcm.length / 2 / config.voice.inputSampleRate).toFixed(1)} s, nivel ${rms}, texto: "${transcript}"`);
       send(ws, { type: 'transcript', text: transcript });
       logEvent(deviceId, 'transcript', { text: transcript });
       if (!transcript) {
