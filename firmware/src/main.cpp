@@ -174,6 +174,16 @@ String wifiSsid[3], wifiPass[3];
 String robiHost, robiDevice, robiToken;
 int robiPort = 443;
 uint32_t lastPing = 0;
+String pendingTest;  // prueba de hardware pedida desde el panel (audio / micro / sensores)
+
+void speakerTalking(bool on) { face.setTalking(on); }
+
+void sendJson(JsonDocument &doc) {
+  String out;
+  serializeJson(doc, out);
+  ws.sendTXT(out);
+}
+
 // Sensores táctiles del cuerpo (TTP223: HIGH al tocar). Avisan al servidor en cada toque nuevo.
 static void pollBodyTouch(uint32_t now) {
   static const int pins[3] = {PIN_TOUCH_CABEZA, PIN_TOUCH_PANZA, PIN_TOUCH_ESPALDA};
@@ -194,16 +204,6 @@ static void pollBodyTouch(uint32_t now) {
     }
     was[i] = on;
   }
-}
-
-String pendingTest;  // prueba de hardware pedida desde el panel (audio / micro / sensores)
-
-void speakerTalking(bool on) { face.setTalking(on); }
-
-void sendJson(JsonDocument &doc) {
-  String out;
-  serializeJson(doc, out);
-  ws.sendTXT(out);
 }
 
 // Mensajes del servidor (ver protocolo en src/ws/robotSocket.js del backend)
