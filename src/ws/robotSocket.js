@@ -98,14 +98,21 @@ export function setEmotion(deviceId, emotion) {
   return list.length;
 }
 
-/** Manda el audio en pedazos. format: 'pcm' (con sampleRate) o 'mp3' (el robot lo decodifica). */
-async function streamAudio(ws, audio) {
-  const { format, data, sampleRate } = await audioForRobot(audio);
+/**
+ * Manda la respuesta al robot. Con voz: primero llega el audio (en pedazos, el robot lo junta sin
+ * reproducirlo) y recién al final van la respuesta con el gesto y la orden de empezar, así el
+ * movimiento, el texto y la voz arrancan al mismo tiempo.
+ */
+async function deliverReply(ws, reply, audio) {
+  const a = audio ? await audioForRobot(audio) : null;
+  if (!a) return send(ws, reply);
+  const { format, data, sampleRate } = a;
   send(ws, { type: 'audio_start', format, sampleRate, bytes: data.length });
   for (let i = 0; i < data.length; i += AUDIO_CHUNK_BYTES) {
     if (ws.readyState !== ws.OPEN) return;
     ws.send(data.subarray(i, i + AUDIO_CHUNK_BYTES));
   }
+  send(ws, reply);
   send(ws, { type: 'audio_end' });
 }
 
@@ -115,9 +122,8 @@ export async function speak(deviceId, text, emotion = 'neutral', gesture = null)
   if (list.length === 0) return 0;
   const audio = ttsEnabled() ? await synthesizeAudio(text).catch(() => null) : null;
   for (const [id, d] of list) {
-    send(d.ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) });
     logEvent(id, 'reply', { text, emotion, from: 'panel' });
-    if (audio) await streamAudio(d.ws, audio);
+    await deliverReply(d.ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) }, audio);
   }
   return list.length;
 }
@@ -128,9 +134,9 @@ async function respond(deviceId, device, userText, source) {
   try {
     send(ws, { type: 'emotion', emotion: 'pensando' });
     const { text, emotion, gesture } = await chat({ deviceId, text: userText, source });
-    send(ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) });
     logEvent(deviceId, 'reply', { text, emotion, gesture });
-    if (ttsEnabled()) await synthesizeAudio(text).then((a) => streamAudio(ws, a)).catch((e) => console.error('[voz]', e.message));
+    const audio = ttsEnabled() ? await synthesizeAudio(text).catch((e) => (console.error('[voz]', e.message), null)) : null;
+    await deliverReply(ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) }, audio);
   } finally {
     device.busy = false;
   }
