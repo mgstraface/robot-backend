@@ -45,7 +45,7 @@ static void i2sStop() {
 
 String HwTest::audio() {
   if (!i2sStart(false)) return "Parlante: no arranco el I2S";
-  // tonos de 440 y 880 Hz, 0,5 s cada uno, a ~25 % del maximo
+  // tonos de 440 y 880 Hz, 4 s cada uno, a ~25 % del maximo
   const int amp = 1 << 29;
   const float freqs[2] = {440.0f, 880.0f};
   int32_t buf[256 * 2];
@@ -53,7 +53,7 @@ String HwTest::audio() {
   size_t total = 0;
   esp_err_t err = ESP_OK;
   for (int f = 0; f < 2; f++) {
-    int blocks = RATE / 2 / 256;
+    int blocks = RATE * 4 / 256;  // 4 s cada tono (para poder medir con el tester)
     for (int b = 0; b < blocks; b++) {
       for (int i = 0; i < 256; i++) {
         int32_t v = (int32_t)(sinf(phase) * amp);
