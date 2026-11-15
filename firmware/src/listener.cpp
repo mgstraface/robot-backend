@@ -15,6 +15,25 @@ static const int GAIN = 6;                 // el INMP441 entrega poco nivel
 
 Listener listener;
 
+// el audio se manda en bloques de 4 KB (8 por segundo) y no en cientos de mensajes chicos: con WiFi débil esos
+// mensajes chicos llenan el buffer y el WebSocket se cae
+static uint8_t outBuf[4096];
+static size_t outLen = 0;
+static void flushOut() {
+  if (outLen) listenerSendBin(outBuf, outLen);
+  outLen = 0;
+}
+static void queueOut(const uint8_t *d, size_t n) {
+  while (n) {
+    size_t k = min(n, sizeof(outBuf) - outLen);
+    memcpy(outBuf + outLen, d, k);
+    outLen += k;
+    d += k;
+    n -= k;
+    if (outLen == sizeof(outBuf)) flushOut();
+  }
+}
+
 bool Listener::start() {
   if (on_ || speaker.busy()) return false;
   i2s_config_t cfg = {};
@@ -41,6 +60,7 @@ bool Listener::start() {
   // sin el driver de salida el pin del ampli quedaría flotando y el parlante haría ruido
   pinMode(PIN_I2S_AMP_DOUT, OUTPUT);
   digitalWrite(PIN_I2S_AMP_DOUT, LOW);
+  outLen = 0;
   on_ = true;
   t0_ = millis();
   lastVoice_ = t0_;
@@ -54,6 +74,7 @@ bool Listener::start() {
 }
 
 void Listener::stop(bool send) {
+  flushOut();
   i2s_driver_uninstall(PORT);
   on_ = false;
   if (send) listenerSendJson("listen_end");
@@ -104,7 +125,7 @@ void Listener::update() {
         lastVoice_ = now;
       }
     }
-    listenerSendBin((const uint8_t *)pcm, frames * 2);
+    queueOut((const uint8_t *)pcm, frames * 2);
   }
   if (now - t0_ > MAX_MS) return stop(true);
   if (!heardVoice_ && now - t0_ > NO_VOICE_MS) return stop(true);
