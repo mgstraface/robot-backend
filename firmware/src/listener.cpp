@@ -11,7 +11,9 @@ static const int RATE = 16000;
 static const uint32_t MAX_MS = 10000;      // tope de una frase
 static const uint32_t NO_VOICE_MS = 5000;  // si nadie habla en 4 s, cancela
 static const uint32_t SILENCE_MS = 1100;   // pausa que cierra la frase
-static const int GAIN = 6;                 // el INMP441 entrega poco nivel
+static const float GAIN_DIV = 32.0f;       // de 24 bits a 16 bits (voz ~ +-20000)
+static const float HP_R = 0.96f;           // filtro que saca la deriva lenta (corte ~100 Hz)
+static float hpX = 0, hpY = 0;
 
 Listener listener;
 
@@ -61,6 +63,7 @@ bool Listener::start() {
   pinMode(PIN_I2S_AMP_DOUT, OUTPUT);
   digitalWrite(PIN_I2S_AMP_DOUT, LOW);
   outLen = 0;
+  hpX = hpY = 0;
   on_ = true;
   t0_ = millis();
   lastVoice_ = t0_;
@@ -102,8 +105,12 @@ void Listener::update() {
     int frames = got / 8;
     double sum = 0;
     for (int i = 0; i < frames; i++) {
-      int32_t s = raw[2 * i] >> 14;  // 24 bits útiles -> 18 bits
-      s = constrain(s * GAIN / 4, -32768, 32767);
+      // este micrófono entrega una deriva lenta enorme (+-5 millones): la sacamos antes de dar ganancia, si no satura
+      float v = (float)(raw[2 * i] >> 8);
+      float y = v - hpX + HP_R * hpY;
+      hpX = v;
+      hpY = y;
+      int32_t s = constrain((int32_t)(y / GAIN_DIV), -32768, 32767);
       pcm[i] = (int16_t)s;
       sum += (double)s * s;
     }
