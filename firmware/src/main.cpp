@@ -342,6 +342,16 @@ void onWsEvent(WStype_t type, uint8_t *payload, size_t length) {
       hello["firmware"] = FIRMWARE_VERSION;
       hello["build"] = FIRMWARE_BUILD;
       sendJson(hello);
+      {
+        // por qué arrancó la última vez y hace cuánto: sirve para distinguir un reinicio de una desconexión del WiFi
+        static const char *motivos[] = {"desconocido", "encendido", "externo", "software", "panic", "watchdog de interrupciones",
+                                        "watchdog de tareas", "otro watchdog", "sueño profundo", "brownout (poca energía)", "sdio"};
+        int r = (int)esp_reset_reason();
+        JsonDocument lg;
+        lg["type"] = "log";
+        lg["message"] = String("arranque: ") + (r >= 0 && r <= 10 ? motivos[r] : "?") + ", encendido hace " + String(millis() / 1000) + " s";
+        sendJson(lg);
+      }
       if (otaStatus.length()) {
         JsonDocument os;
         os["type"] = "ota_status";
