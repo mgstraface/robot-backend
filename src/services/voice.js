@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { config } from '../config.js';
 import { getSettings } from '../models/Settings.js';
 import { edgeSynthesize } from './edgeTts.js';
@@ -151,4 +152,38 @@ export async function synthesize(text) {
   if (!local) return audio;
   const { pcm, sampleRate } = wavToPcm(audio);
   return resample(pcm, sampleRate, config.voice.outputSampleRate);
+}
+
+/**
+ * El robot no decodifica MP3: lo pasamos a PCM 16 bits mono con ffmpeg (24 kHz, como pide el parlante).
+ * Si no hay ffmpeg o falla, devuelve el audio como vino.
+ */
+export async function audioForRobot(audio, sampleRate = 24000) {
+  if (!audio || audio.format !== 'mp3') return audio;
+  try {
+    const pcm = await new Promise((resolve, reject) => {
+      const ff = spawn('ffmpeg', ['-v', 'error', '-i', 'pipe:0', '-f', 's16le', '-ac', '1', '-ar', String(sampleRate), 'pipe:1']);
+      const out = [];
+      const timer = setTimeout(() => {
+        ff.kill('SIGKILL');
+        reject(new Error('ffmpeg tardó demasiado'));
+      }, 15000);
+      ff.stdout.on('data', (c) => out.push(c));
+      ff.on('error', (e) => {
+        clearTimeout(timer);
+        reject(e);
+      });
+      ff.on('close', (code) => {
+        clearTimeout(timer);
+        const buf = Buffer.concat(out);
+        code === 0 && buf.length ? resolve(buf) : reject(new Error(`ffmpeg salió con ${code}`));
+      });
+      ff.stdin.on('error', () => {});
+      ff.stdin.end(audio.data);
+    });
+    return { format: 'pcm', data: pcm, sampleRate };
+  } catch (e) {
+    console.error('[voz] no pude pasar el MP3 a PCM:', e.message);
+    return audio;
+  }
 }
