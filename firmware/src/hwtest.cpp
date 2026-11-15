@@ -88,7 +88,7 @@ String HwTest::micro() {
   uint32_t first[6] = {0};
   int nFirst = 0;
   long n = 0, lowZero = 0;
-  double hpSq = 0, hpX = 0, hpY = 0;
+  double hpSq = 0, hpX = 0, hpY = 0, hp2X = 0, hp2Y = 0;
   uint32_t t0 = millis();
   size_t got;
   while (millis() - t0 < 2000) {
@@ -100,9 +100,12 @@ String HwTest::micro() {
       if ((buf[2 * i] & 0xFF) == 0) lowZero++;
       {
         double v0 = (double)(buf[2 * i] >> 8);
-        double y0 = v0 - hpX + 0.96 * hpY;
+        double y1 = v0 - hpX + 0.88 * hpY;
         hpX = v0;
-        hpY = y0;
+        hpY = y1;
+        double y0 = y1 - hp2X + 0.88 * hp2Y;
+        hp2X = y1;
+        hp2Y = y0;
         hpSq += y0 * y0;
       }
       for (int c = 0; c < 2; c++) {
