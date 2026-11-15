@@ -278,6 +278,7 @@ export function attachRobotSocket(server) {
       .then((s) => {
         send(ws, { type: 'calibration', servos: s.servos });
         send(ws, { type: 'display', girada: Boolean(s.pantallaGirada) });
+        send(ws, { type: 'volume', volume: s.volumen });
       })
       .catch(() => {});
     send(ws, cocinaParaRobot());

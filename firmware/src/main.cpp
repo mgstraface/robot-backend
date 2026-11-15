@@ -234,6 +234,13 @@ void onServerMessage(const char *payload, size_t length) {
     touch.setFlipped(girada);
     face.invalidate();
     flushScreen();
+  } else if (!strcmp(type, "volume")) {
+    int v = constrain((int)(msg["volume"] | 60), 0, 100);
+    speaker.setVolume(v);
+    Preferences p;
+    p.begin("robi", false);
+    p.putInt("volumen", v);
+    p.end();
   } else if (!strcmp(type, "audio_start")) {
     speaker.onStart(msg["bytes"] | 0, msg["sampleRate"] | 24000, String(msg["format"] | "") == "pcm");
   } else if (!strcmp(type, "audio_end")) {
@@ -437,6 +444,12 @@ void setup() {
   flushScreen();
 
   face.begin(canvas);
+  {
+    Preferences p;
+    p.begin("robi", true);
+    speaker.setVolume(p.getInt("volumen", 60));  // el último volumen, hasta que llegue el del servidor
+    p.end();
+  }
   servos.begin();
   ui.begin(canvas, &face, sendJson);  // también prende la luz de fondo (con el brillo guardado)
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);

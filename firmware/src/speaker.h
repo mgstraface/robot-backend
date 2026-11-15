@@ -10,6 +10,7 @@ class Speaker {
   void onEnd();     // llegó todo: empieza a sonar
   void abort();     // se cortó la conexión a mitad de camino
   void update();    // llamar en cada vuelta de loop(): va llenando el buffer del I2S
+  void setVolume(int percent);  // 0-100
   bool busy() const { return receiving_ || playing_; }
   bool playing() const { return playing_; }
 
@@ -21,6 +22,7 @@ class Speaker {
   size_t got_ = 0;       // bytes recibidos
   size_t pos_ = 0;       // muestras ya enviadas al I2S
   uint32_t rate_ = 24000;
+  float gain_ = 0.6f;
   bool receiving_ = false;
   bool playing_ = false;
   bool ignoring_ = false;  // formato que no sabemos reproducir (ej. MP3)
