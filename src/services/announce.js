@@ -26,10 +26,13 @@ export function feedAfter(after) {
 export async function announce({ kind, text = '', emotion = 'neutral', actions = [], weather, gesture }) {
   const entry = pushFeed({ kind, text, emotion, actions, weather, gesture });
   for (const action of actions) broadcast({ type: 'action', action, ...(weather ? { weather } : {}) });
-  if (gesture) broadcast({ type: 'gesture', gesture });
   try {
-    if (text) await speak(undefined, text, emotion);
-    else if (emotion && emotion !== 'neutral') setEmotion(undefined, emotion);
+    // con texto, el gesto va junto con la respuesta (y con la voz, que se prepara primero): así se mueve cuando empieza a hablar
+    if (text) await speak(undefined, text, emotion, gesture || null);
+    else {
+      if (gesture) broadcast({ type: 'gesture', gesture });
+      if (emotion && emotion !== 'neutral') setEmotion(undefined, emotion);
+    }
   } catch (err) {
     console.error('[announce] no se pudo mandar al robot:', err.message);
   }
