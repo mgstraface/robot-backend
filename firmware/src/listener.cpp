@@ -38,6 +38,9 @@ bool Listener::start() {
     i2s_driver_uninstall(PORT);
     return false;
   }
+  // sin el driver de salida el pin del ampli quedaría flotando y el parlante haría ruido
+  pinMode(PIN_I2S_AMP_DOUT, OUTPUT);
+  digitalWrite(PIN_I2S_AMP_DOUT, LOW);
   on_ = true;
   t0_ = millis();
   lastVoice_ = t0_;

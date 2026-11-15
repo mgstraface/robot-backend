@@ -186,6 +186,19 @@ async function handleJson(deviceId, device, msg) {
         send(ws, { type: 'emotion', emotion: 'neutral' });
         return;
       }
+      if (config.voice.micEcho) {
+        // prueba del micrófono: se lo devolvemos para que lo escuche (subido de volumen para que se note)
+        let peak = 1;
+        for (let i = 0; i + 1 < pcm.length; i += 2) peak = Math.max(peak, Math.abs(pcm.readInt16LE(i)));
+        const k = Math.min(8, 26000 / peak);
+        const loud = Buffer.alloc(pcm.length);
+        for (let i = 0; i + 1 < pcm.length; i += 2) loud.writeInt16LE(Math.round(Math.max(-32768, Math.min(32767, pcm.readInt16LE(i) * k))), i);
+        console.log(`[oido] eco: ${(pcm.length / 2 / config.voice.inputSampleRate).toFixed(1)} s, pico ${peak}, subido x${k.toFixed(1)}`);
+        send(ws, { type: 'audio_start', format: 'pcm', sampleRate: config.voice.inputSampleRate, bytes: loud.length });
+        for (let i = 0; i < loud.length; i += AUDIO_CHUNK_BYTES) ws.send(loud.subarray(i, i + AUDIO_CHUNK_BYTES));
+        send(ws, { type: 'audio_end' });
+        return;
+      }
       send(ws, { type: 'emotion', emotion: 'pensando' });
       const transcript = await transcribe(pcm);
       let sum = 0;
