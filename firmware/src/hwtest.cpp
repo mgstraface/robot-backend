@@ -85,7 +85,9 @@ String HwTest::micro() {
   double sum[2] = {0, 0}, sq[2] = {0, 0};
   int32_t mn[2] = {INT32_MAX, INT32_MAX}, mx[2] = {INT32_MIN, INT32_MIN};
   uint32_t sample[2] = {0, 0};
-  long n = 0;
+  uint32_t first[6] = {0};
+  int nFirst = 0;
+  long n = 0, lowZero = 0;
   uint32_t t0 = millis();
   size_t got;
   while (millis() - t0 < 2000) {
@@ -93,6 +95,8 @@ String HwTest::micro() {
     int frames = got / 8;
     for (int i = 0; i < frames; i++) {
       if (millis() - t0 < 300) continue;  // descarta el arranque
+      if (nFirst < 6) first[nFirst++] = (uint32_t)buf[2 * i];
+      if ((buf[2 * i] & 0xFF) == 0) lowZero++;
       for (int c = 0; c < 2; c++) {
         int32_t v = buf[2 * i + c] >> 8;  // INMP441: 24 bits en palabra de 32
         sum[c] += v;
@@ -115,6 +119,8 @@ String HwTest::micro() {
     Serial.printf("[mic] %s dc=%.0f ac=%.0f min=%d max=%d raw=0x%08X\n", name[c], mean, ac[c], (int)mn[c], (int)mx[c], (unsigned)sample[c]);
     out += String(" | ") + name[c] + ": dc " + String((long)mean) + " ac " + String((long)ac[c]) + " min " + String((long)mn[c]) + " max " + String((long)mx[c]);
   }
+  out += " | bajo0 " + String((int)(100 * lowZero / n)) + "% | crudo";
+  for (int i = 0; i < nFirst; i++) out += " " + String(first[i], HEX);
   if (ac[0] < 1 && ac[1] < 1) out += " -> todo quieto (revisar SD->GPIO7, VDD y GND)";
   return out;
 }

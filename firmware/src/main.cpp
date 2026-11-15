@@ -619,6 +619,10 @@ void loop() {
   if (pendingTest.length() && !speaker.busy() && !listener.listening()) {
     String what = pendingTest;
     pendingTest = "";
+    if (what == "micro") {
+      servos.stop();  // sin señal a los servos: que su ruido no se meta en la medición
+      delay(400);
+    }
     face.showText(what == "audio" ? "Prueba de parlante..." : what == "micro" ? "Hablale al microfono..." : "Toca cabeza, panza y espalda", 6000);
     face.update(millis());
     flushScreen();
