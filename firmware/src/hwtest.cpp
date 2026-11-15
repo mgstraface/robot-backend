@@ -46,7 +46,7 @@ static void i2sStop() {
 String HwTest::audio() {
   if (!i2sStart()) return "Parlante: no arranco el I2S";
   // pitidos suaves: 440 Hz y 880 Hz (amplitud baja, no asusta ni satura)
-  const int amp = 1 << 27;  // ~6 % del máximo
+  const int amp = 1 << 28;  // ~12 % del máximo
   const float freqs[2] = {440.0f, 880.0f};
   int32_t buf[256 * 2];
   float phase = 0;

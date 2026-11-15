@@ -7,6 +7,7 @@ static const int CH0 = 2;  // canales PWM 2..5 (el 0 es la luz de la pantalla)
 static const int FREQ = 50, BITS = 14;
 static const int US_MIN = 500, US_MAX = 2400;  // pulso de un SG90 para 0° y 180°
 static const int16_t X = 999;                  // "no tocar" en una coreografía
+static const float MAX_GESTURE_SPEED = 220.0f;  // °/s tope en gestos: más suave y sin picos de corriente que reinicien la placa
 
 // ---- coreografías (desplazamientos en grados desde el centro; brazos: + = arriba)
 //                    t      pan  tilt armL armR
@@ -144,7 +145,7 @@ void Servos::update(uint32_t now) {
       if (k.p[i] == X) continue;
       float a = constrain(offsetToAngle(i, k.p[i]), (float)cal_[i].min, (float)cal_[i].max);
       float need = fabsf(a - pos_[i]) / (dt * 0.85f);
-      target(i, a, true, constrain(need, (float)cal_[i].vel, 450.0f));
+      target(i, a, true, constrain(need, (float)cal_[i].vel, MAX_GESTURE_SPEED));
     }
     if (++nextKey_ >= nKeys_) keys_ = nullptr;
   }
