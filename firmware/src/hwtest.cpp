@@ -10,9 +10,9 @@ static const i2s_port_t PORT = I2S_NUM_0;
 static const int RATE = 16000;
 
 // Mic y parlante comparten BCLK/WS; mic entra por GPIO7 y el parlante sale por GPIO8.
-static bool i2sStart() {
+static bool i2sStart(bool rx) {
   i2s_config_t cfg = {};
-  cfg.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_RX);
+  cfg.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX | (rx ? I2S_MODE_RX : 0));
   cfg.sample_rate = RATE;
   cfg.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT;
   cfg.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;  // estéreo: el INMP441 (L/R a GND) habla en el canal izquierdo
@@ -28,7 +28,7 @@ static bool i2sStart() {
   pins.bck_io_num = PIN_I2S_BCLK;
   pins.ws_io_num = PIN_I2S_WS;
   pins.data_out_num = PIN_I2S_AMP_DOUT;
-  pins.data_in_num = PIN_I2S_MIC_DIN;
+  pins.data_in_num = rx ? PIN_I2S_MIC_DIN : I2S_PIN_NO_CHANGE;
   if (i2s_set_pin(PORT, &pins) != ESP_OK) {
     i2s_driver_uninstall(PORT);
     return false;
@@ -44,14 +44,16 @@ static void i2sStop() {
 }
 
 String HwTest::audio() {
-  if (!i2sStart()) return "Parlante: no arranco el I2S";
-  // pitidos suaves: 440 Hz y 880 Hz (amplitud baja, no asusta ni satura)
-  const int amp = 1 << 28;  // ~12 % del máximo
+  if (!i2sStart(false)) return "Parlante: no arranco el I2S";
+  // tonos de 440 y 880 Hz, 0,5 s cada uno, a ~25 % del maximo
+  const int amp = 1 << 29;
   const float freqs[2] = {440.0f, 880.0f};
   int32_t buf[256 * 2];
   float phase = 0;
+  size_t total = 0;
+  esp_err_t err = ESP_OK;
   for (int f = 0; f < 2; f++) {
-    int blocks = RATE * 3 / 10 / 256;  // 0,3 s cada tono
+    int blocks = RATE / 2 / 256;
     for (int b = 0; b < blocks; b++) {
       for (int i = 0; i < 256; i++) {
         int32_t v = (int32_t)(sinf(phase) * amp);
@@ -60,22 +62,24 @@ String HwTest::audio() {
         buf[2 * i] = v;
         buf[2 * i + 1] = v;
       }
-      size_t w;
-      i2s_write(PORT, buf, sizeof(buf), &w, 1000);
+      size_t w = 0;
+      esp_err_t e = i2s_write(PORT, buf, sizeof(buf), &w, 1000);
+      if (e != ESP_OK) err = e;
+      total += w;
     }
   }
-  // silencio para vaciar el buffer
   memset(buf, 0, sizeof(buf));
   for (int b = 0; b < 8; b++) {
     size_t w;
     i2s_write(PORT, buf, sizeof(buf), &w, 1000);
   }
   i2sStop();
-  return "Parlante: pitido enviado, se oyo?";
+  Serial.printf("[audio] escritos %u bytes, err=%d\n", (unsigned)total, (int)err);
+  return "Parlante: " + String((unsigned)total) + " bytes enviados, error=" + String((int)err) + " (0 = ok). Se oyo?";
 }
 
 String HwTest::micro() {
-  if (!i2sStart()) return "Mic: no arranco el I2S";
+  if (!i2sStart(true)) return "Mic: no arranco el I2S";
   int32_t buf[256 * 2];
   double sum = 0, sumL = 0, sumR = 0;
   long n = 0;
