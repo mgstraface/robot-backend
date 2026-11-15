@@ -12,8 +12,8 @@ static const uint32_t MAX_MS = 10000;      // tope de una frase
 static const uint32_t NO_VOICE_MS = 5000;  // si nadie habla en 4 s, cancela
 static const uint32_t SILENCE_MS = 1100;   // pausa que cierra la frase
 static const float GAIN_DIV = 32.0f;       // de 24 bits a 16 bits (voz ~ +-20000)
-static const float HP_R = 0.96f;           // filtro que saca la deriva lenta (corte ~100 Hz)
-static float hpX = 0, hpY = 0;
+static const float HP_R = 0.88f;           // dos filtros en cascada que sacan lo grave (corte ~300 Hz): ahí no hay voz y sí mucha deriva
+static float hpX = 0, hpY = 0, hp2X = 0, hp2Y = 0;
 
 Listener listener;
 
@@ -63,7 +63,7 @@ bool Listener::start() {
   pinMode(PIN_I2S_AMP_DOUT, OUTPUT);
   digitalWrite(PIN_I2S_AMP_DOUT, LOW);
   outLen = 0;
-  hpX = hpY = 0;
+  hpX = hpY = hp2X = hp2Y = 0;
   on_ = true;
   t0_ = millis();
   lastVoice_ = t0_;
@@ -107,9 +107,12 @@ void Listener::update() {
     for (int i = 0; i < frames; i++) {
       // este micrófono entrega una deriva lenta enorme (+-5 millones): la sacamos antes de dar ganancia, si no satura
       float v = (float)(raw[2 * i] >> 8);
-      float y = v - hpX + HP_R * hpY;
+      float y1 = v - hpX + HP_R * hpY;
       hpX = v;
-      hpY = y;
+      hpY = y1;
+      float y = y1 - hp2X + HP_R * hp2Y;
+      hp2X = y1;
+      hp2Y = y;
       int32_t s = constrain((int32_t)(y / GAIN_DIV), -32768, 32767);
       pcm[i] = (int16_t)s;
       sum += (double)s * s;
@@ -124,7 +127,8 @@ void Listener::update() {
       noise_ = max(noise_, rms);
       calibN_++;
     } else {
-      float thr = min(max(350.0f, noise_ * 3.0f), 2500.0f);
+      // el ruido de este micrófono es alto (~3000 en estas unidades): el umbral va relativo a lo medido
+      float thr = min(max(1200.0f, noise_ * 2.2f), 12000.0f);
       // la voz tiene que sostenerse unos 4 bloques seguidos (~60 ms): un golpe o un click no alcanza
       run = rms > thr ? run + 1 : 0;
       if (run >= 4) {
