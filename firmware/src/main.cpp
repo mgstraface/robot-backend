@@ -18,6 +18,7 @@
 #include "config.h"
 #include "face.h"
 #include "hwtest.h"
+#include "listener.h"
 #include "touch.h"
 #include "servos.h"
 #include "speaker.h"
@@ -184,18 +185,40 @@ void sendJson(JsonDocument &doc) {
   ws.sendTXT(out);
 }
 
-// Sensores táctiles del cuerpo (TTP223: HIGH al tocar). Avisan al servidor en cada toque nuevo.
+void listenerSendBin(const uint8_t *data, size_t len) {
+  if (wsConnected) ws.sendBIN((uint8_t *)data, len);
+}
+void listenerSendJson(const char *type) {
+  if (!wsConnected) return;
+  JsonDocument d;
+  d["type"] = type;
+  sendJson(d);
+}
+void listenerFace(const char *emotion) { face.setEmotion(emotion); }
+
+// Sensores táctiles del cuerpo (TTP223: HIGH al tocar). Avisan al servidor en cada toque nuevo;
+// dos toques seguidos en la panza = "hablale" (empieza a escuchar).
 static void pollBodyTouch(uint32_t now) {
   static const int pins[3] = {PIN_TOUCH_CABEZA, PIN_TOUCH_PANZA, PIN_TOUCH_ESPALDA};
   static const char *zones[3] = {"cabeza", "panza", "espalda"};
   static bool was[3] = {false, false, false};
-  static uint32_t last[3] = {0, 0, 0};
+  static uint32_t lastEdge[3] = {0, 0, 0}, lastSent[3] = {0, 0, 0};
+  static uint32_t panzaPrev = 0;
   for (int i = 0; i < 3; i++) {
     bool on = digitalRead(pins[i]) == HIGH;
-    if (on && !was[i] && now - last[i] > 600) {  // flanco de subida, con pausa para no repetir
-      last[i] = now;
+    if (on && !was[i] && now - lastEdge[i] > 80) {  // flanco de subida
+      lastEdge[i] = now;
       Serial.printf("[toque] %s\n", zones[i]);
-      if (wsConnected) {
+      if (i == 1) {
+        if (panzaPrev && now - panzaPrev < 900 && wsConnected && listener.start()) {
+          panzaPrev = 0;
+          was[i] = on;
+          continue;  // doble toque: ya está escuchando, no manda el toque suelto
+        }
+        panzaPrev = now;
+      }
+      if (wsConnected && now - lastSent[i] > 600) {  // pausa para no repetir al servidor
+        lastSent[i] = now;
         JsonDocument t;
         t["type"] = "touch";
         t["zone"] = zones[i];
@@ -577,8 +600,9 @@ void loop() {
     return;
   }
   speaker.update();
+  listener.update();
   pollBodyTouch(now);
-  if (pendingTest.length() && !speaker.busy()) {
+  if (pendingTest.length() && !speaker.busy() && !listener.listening()) {
     String what = pendingTest;
     pendingTest = "";
     face.showText(what == "audio" ? "Prueba de parlante..." : what == "micro" ? "Hablale al microfono..." : "Toca cabeza, panza y espalda", 6000);
