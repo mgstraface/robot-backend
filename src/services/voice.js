@@ -164,11 +164,13 @@ export async function audioForRobot(audio, sampleRate = 24000) {
     const pcm = await new Promise((resolve, reject) => {
       const ff = spawn('ffmpeg', ['-v', 'error', '-i', 'pipe:0', '-f', 's16le', '-ac', '1', '-ar', String(sampleRate), 'pipe:1']);
       const out = [];
+      let err = '';
       const timer = setTimeout(() => {
         ff.kill('SIGKILL');
         reject(new Error('ffmpeg tardó demasiado'));
       }, 15000);
       ff.stdout.on('data', (c) => out.push(c));
+      ff.stderr.on('data', (c) => (err += c));
       ff.on('error', (e) => {
         clearTimeout(timer);
         reject(e);
@@ -176,7 +178,7 @@ export async function audioForRobot(audio, sampleRate = 24000) {
       ff.on('close', (code) => {
         clearTimeout(timer);
         const buf = Buffer.concat(out);
-        code === 0 && buf.length ? resolve(buf) : reject(new Error(`ffmpeg salió con ${code}`));
+        code === 0 && buf.length ? resolve(buf) : reject(new Error(`ffmpeg salió con ${code} (mp3 de ${audio.data.length} bytes, empieza con ${audio.data.subarray(0, 4).toString('hex')}): ${err.trim().slice(0, 200)}`));
       });
       ff.stdin.on('error', () => {});
       ff.stdin.end(audio.data);
