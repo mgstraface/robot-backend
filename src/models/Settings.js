@@ -26,6 +26,7 @@ export const DEFAULT_SETTINGS = {
     armL: { centro: 20, min: 0, max: 170, invertido: false, vel: 180 },
     armR: { centro: 20, min: 0, max: 170, invertido: true, vel: 180 },
   },
+  volumen: 60, // volumen del parlante (0-100)
   pantallaGirada: false, // la placa montada al revés: da vuelta la imagen y el táctil
   fechas: [], // [{ nombre, dia, mes, tipo: cumple | aniversario | otro }]
   frasesCadaHoras: 3, // cada cuánto tira una frase leprosa (0 = nunca)
@@ -57,6 +58,7 @@ const settingsSchema = new mongoose.Schema(
     voz: String,
     vozTono: String,
     servos: { type: Object },
+    volumen: { type: Number, min: 0, max: 100 },
     pantallaGirada: Boolean,
     fechas: [{ _id: false, nombre: String, dia: Number, mes: Number, tipo: String }],
     frasesCadaHoras: Number,
@@ -124,6 +126,7 @@ export function sanitizeSettings(body = {}) {
   set('meetingNoticeMin', int(body.meetingNoticeMin, 1, 120));
   set('deployReactions', typeof body.deployReactions === 'boolean' ? body.deployReactions : undefined);
   set('futbol', typeof body.futbol === 'boolean' ? body.futbol : undefined);
+  set('volumen', int(body.volumen, 0, 100));
   set('pantallaGirada', typeof body.pantallaGirada === 'boolean' ? body.pantallaGirada : undefined);
   set('voz', typeof body.voz === 'string' && /^[a-z]{2}-[A-Z]{2}-[A-Za-z]+Neural$/.test(body.voz) ? body.voz : undefined);
   set('vozTono', ['normal', 'agudo', 'grave'].includes(body.vozTono) ? body.vozTono : undefined);

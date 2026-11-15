@@ -233,6 +233,7 @@ router.put(
     const saved = await updateSettings(update);
     if (update.servos) broadcast({ type: 'calibration', servos: saved.servos });
     if ('pantallaGirada' in update) broadcast({ type: 'display', girada: Boolean(saved.pantallaGirada) });
+    if ('volumen' in update) broadcast({ type: 'volume', volume: saved.volumen });
     if ('calendarUrl' in update) clearCalendarCache();
     resetScarePlan();
     res.json(publicSettings(saved));

@@ -7,9 +7,10 @@
 
 static const i2s_port_t PORT = I2S_NUM_0;
 static const size_t MAX_BYTES = 2 * 1024 * 1024;  // ~43 s a 24 kHz (cabe de sobra en los 8 MB de PSRAM)
-static const float VOLUME = 0.6f;                 // el MAX98357A con 5 V es fuerte: arrancamos bajito
 
 Speaker speaker;
+
+void Speaker::setVolume(int percent) { gain_ = constrain(percent, 0, 100) / 100.0f; }
 
 void Speaker::release() {
   if (buf_) heap_caps_free(buf_);
@@ -120,7 +121,7 @@ void Speaker::update() {
       }
       size_t n = min((size_t)256, total - pos_);
       for (size_t i = 0; i < n; i++) {
-        int16_t v = (int16_t)(buf_[pos_ + i] * VOLUME);
+        int16_t v = (int16_t)(buf_[pos_ + i] * gain_);
         out_[2 * i] = v;
         out_[2 * i + 1] = v;
       }
