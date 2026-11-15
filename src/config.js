@@ -49,5 +49,7 @@ export const config = {
     // El TTS de OpenAI en formato "pcm" devuelve 24 kHz, 16 bits, mono
     outputSampleRate: 24000,
     maxListenSeconds: Number(process.env.MAX_LISTEN_SECONDS || 30),
+    // MIC_ECHO=1: prueba del micrófono. El robot repite lo que grabó, sin transcribir ni contestar.
+    micEcho: process.env.MIC_ECHO === '1',
   },
 };
