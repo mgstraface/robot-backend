@@ -9,7 +9,7 @@
 static const i2s_port_t PORT = I2S_NUM_0;
 static const int RATE = 16000;
 static const uint32_t MAX_MS = 10000;      // tope de una frase
-static const uint32_t NO_VOICE_MS = 4000;  // si nadie habla en 4 s, cancela
+static const uint32_t NO_VOICE_MS = 5000;  // si nadie habla en 4 s, cancela
 static const uint32_t SILENCE_MS = 1100;   // pausa que cierra la frase
 static const int GAIN = 6;                 // el INMP441 entrega poco nivel
 
@@ -72,6 +72,7 @@ void Listener::update() {
   if (!on_) return;
   static int32_t raw[256 * 2];
   static int16_t pcm[256];
+  static int run = 0;
   size_t got = 0;
   uint32_t now = millis();
   // junta todo lo disponible sin esperar
@@ -86,13 +87,19 @@ void Listener::update() {
       sum += (double)s * s;
     }
     float rms = sqrt(sum / max(frames, 1));
-    // los primeros 300 ms miden el ruido de fondo
-    if (now - t0_ < 300) {
+    // el doble toque sacude el robot: ignoramos los primeros 350 ms, y de 350 a 800 ms medimos el ruido de fondo
+    uint32_t el = now - t0_;
+    if (el < 50) run = 0;
+    if (el < 350) {
+      // golpe del toque: no cuenta
+    } else if (el < 800) {
       noise_ = max(noise_, rms);
       calibN_++;
     } else {
-      float thr = max(350.0f, noise_ * 3.0f);
-      if (rms > thr) {
+      float thr = min(max(350.0f, noise_ * 3.0f), 2500.0f);
+      // la voz tiene que sostenerse unos 4 bloques seguidos (~60 ms): un golpe o un click no alcanza
+      run = rms > thr ? run + 1 : 0;
+      if (run >= 4) {
         heardVoice_ = true;
         lastVoice_ = now;
       }
