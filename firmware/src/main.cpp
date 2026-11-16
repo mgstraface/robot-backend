@@ -188,10 +188,11 @@ void sendJson(JsonDocument &doc) {
 void listenerSendBin(const uint8_t *data, size_t len) {
   if (wsConnected) ws.sendBIN((uint8_t *)data, len);
 }
-void listenerSendJson(const char *type) {
+void listenerSendJson(const char *type, int rate) {
   if (!wsConnected) return;
   JsonDocument d;
   d["type"] = type;
+  if (rate) d["rate"] = rate;
   sendJson(d);
 }
 void listenerFace(const char *emotion) { face.setEmotion(emotion); }
@@ -349,7 +350,7 @@ void onWsEvent(WStype_t type, uint8_t *payload, size_t length) {
         int r = (int)esp_reset_reason();
         JsonDocument lg;
         lg["type"] = "log";
-        lg["message"] = String("arranque: ") + (r >= 0 && r <= 10 ? motivos[r] : "?") + ", encendido hace " + String(millis() / 1000) + " s";
+        lg["message"] = String("arranque: ") + (r >= 0 && r <= 10 ? motivos[r] : "?") + ", encendido hace " + String(millis() / 1000) + " s | wifi " + WiFi.SSID() + " canal " + String(WiFi.channel()) + " señal " + String(WiFi.RSSI()) + " dBm";
         sendJson(lg);
       }
       if (otaStatus.length()) {

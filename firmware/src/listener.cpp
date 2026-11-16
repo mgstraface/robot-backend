@@ -8,6 +8,7 @@
 
 static const i2s_port_t PORT = I2S_NUM_0;
 static const int RATE = 16000;
+static const int SEND_RATE = 8000;  // al servidor va a la mitad: con WiFi flojo hay menos que mandar, y para voz alcanza
 static const uint32_t MAX_MS = 10000;      // tope de una frase
 static const uint32_t NO_VOICE_MS = 5000;  // si nadie habla en 4 s, cancela
 static const uint32_t SILENCE_MS = 1100;   // pausa que cierra la frase
@@ -70,7 +71,8 @@ bool Listener::start() {
   heardVoice_ = false;
   noise_ = 0;
   calibN_ = 0;
-  listenerSendJson("listen_start");
+  odd_ = false;
+  listenerSendJson("listen_start", SEND_RATE);
   listenerFace("escuchando");
   Serial.println("[oido] escuchando");
   return true;
@@ -95,7 +97,8 @@ void Listener::cancel() {
 void Listener::update() {
   if (!on_) return;
   static int32_t raw[256 * 2];
-  static int16_t pcm[256];
+  static int16_t pcm[256];  // a 8 kHz entra la mitad
+  static int16_t prev = 0;
   static int run = 0;
   size_t got = 0;
   uint32_t now = millis();
@@ -103,6 +106,7 @@ void Listener::update() {
   for (int guard = 0; guard < 8; guard++) {
     if (i2s_read(PORT, raw, sizeof(raw), &got, 0) != ESP_OK || got == 0) break;
     int frames = got / 8;
+    int n8 = 0;
     double sum = 0;
     for (int i = 0; i < frames; i++) {
       // este micrófono entrega una deriva lenta enorme (+-5 millones): la sacamos antes de dar ganancia, si no satura
@@ -114,7 +118,10 @@ void Listener::update() {
       hp2X = y1;
       hp2Y = y;
       int32_t s = constrain((int32_t)(y / GAIN_DIV), -32768, 32767);
-      pcm[i] = (int16_t)s;
+      // 16 kHz -> 8 kHz: promedio de a pares (hace de filtro) 
+      if (odd_) pcm[n8++] = (int16_t)(((int32_t)prev + s) / 2);
+      else prev = (int16_t)s;
+      odd_ = !odd_;
       sum += (double)s * s;
     }
     float rms = sqrt(sum / max(frames, 1));
@@ -136,7 +143,7 @@ void Listener::update() {
         lastVoice_ = now;
       }
     }
-    queueOut((const uint8_t *)pcm, frames * 2);
+    queueOut((const uint8_t *)pcm, n8 * 2);
   }
   if (now - t0_ > MAX_MS) return stop(true);
   if (!heardVoice_ && now - t0_ > NO_VOICE_MS) return stop(true);

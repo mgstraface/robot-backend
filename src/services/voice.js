@@ -95,9 +95,9 @@ export function pcmToWav(pcm, sampleRate, channels = 1, bitsPerSample = 16) {
 }
 
 /** Audio del robot (PCM 16 kHz) → texto. */
-export async function transcribe(pcm) {
+export async function transcribe(pcm, sampleRate = config.voice.inputSampleRate) {
   if (!voiceEnabled()) throw new Error('Voz desactivada: configurá VOICE_PROVIDER (local u openai)');
-  const wav = pcmToWav(pcm, config.voice.inputSampleRate);
+  const wav = pcmToWav(pcm, sampleRate);
   const form = new FormData();
   form.append('file', new Blob([wav], { type: 'audio/wav' }), 'audio.wav');
   form.append('model', config.voice.sttModel);
