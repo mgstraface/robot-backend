@@ -172,6 +172,7 @@ async function handleJson(deviceId, device, msg) {
     case 'listen_start':
       device.audio = [];
       device.audioBytes = 0;
+      device.inputRate = Number(msg.rate) > 0 ? Math.min(Number(msg.rate), 48000) : config.voice.inputSampleRate;
       device.listening = true;
       send(ws, { type: 'emotion', emotion: 'escuchando' });
       return;
@@ -181,7 +182,8 @@ async function handleJson(deviceId, device, msg) {
       const pcm = Buffer.concat(device.audio || []);
       device.audio = [];
       device.audioBytes = 0;
-      if (pcm.length < config.voice.inputSampleRate * 2 * 0.3) {
+      const rate = device.inputRate || config.voice.inputSampleRate;
+      if (pcm.length < rate * 2 * 0.3) {
         // menos de 0,3 s: probablemente un toque sin querer
         send(ws, { type: 'emotion', emotion: 'neutral' });
         return;
@@ -193,18 +195,18 @@ async function handleJson(deviceId, device, msg) {
         const k = Math.min(8, 26000 / peak);
         const loud = Buffer.alloc(pcm.length);
         for (let i = 0; i + 1 < pcm.length; i += 2) loud.writeInt16LE(Math.round(Math.max(-32768, Math.min(32767, pcm.readInt16LE(i) * k))), i);
-        console.log(`[oido] eco: ${(pcm.length / 2 / config.voice.inputSampleRate).toFixed(1)} s, pico ${peak}, subido x${k.toFixed(1)}`);
-        send(ws, { type: 'audio_start', format: 'pcm', sampleRate: config.voice.inputSampleRate, bytes: loud.length });
+        console.log(`[oido] eco: ${(pcm.length / 2 / rate).toFixed(1)} s, pico ${peak}, subido x${k.toFixed(1)}`);
+        send(ws, { type: 'audio_start', format: 'pcm', sampleRate: rate, bytes: loud.length });
         for (let i = 0; i < loud.length; i += AUDIO_CHUNK_BYTES) ws.send(loud.subarray(i, i + AUDIO_CHUNK_BYTES));
         send(ws, { type: 'audio_end' });
         return;
       }
       send(ws, { type: 'emotion', emotion: 'pensando' });
-      const transcript = await transcribe(pcm);
+      const transcript = await transcribe(pcm, rate);
       let sum = 0;
       for (let i = 0; i + 1 < pcm.length; i += 2) sum += pcm.readInt16LE(i) ** 2;
       const rms = Math.round(Math.sqrt(sum / (pcm.length / 2)));
-      console.log(`[oido] ${(pcm.length / 2 / config.voice.inputSampleRate).toFixed(1)} s, nivel ${rms}, texto: "${transcript}"`);
+      console.log(`[oido] ${(pcm.length / 2 / rate).toFixed(1)} s, nivel ${rms}, texto: "${transcript}"`);
       send(ws, { type: 'transcript', text: transcript });
       logEvent(deviceId, 'transcript', { text: transcript });
       if (!transcript) {
