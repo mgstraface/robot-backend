@@ -110,6 +110,32 @@ export async function transcribe(pcm, sampleRate = config.voice.inputSampleRate)
   return String(data.text || '').trim();
 }
 
+/** Audio en cualquier formato (webm/opus del navegador, mp4 del iPhone, wav…) → PCM 16 bits mono con ffmpeg. */
+export function anyToPcm(data, sampleRate = config.voice.inputSampleRate) {
+  return new Promise((resolve, reject) => {
+    const ff = spawn('ffmpeg', ['-v', 'error', '-i', 'pipe:0', '-f', 's16le', '-ac', '1', '-ar', String(sampleRate), 'pipe:1']);
+    const out = [];
+    let err = '';
+    const timer = setTimeout(() => {
+      ff.kill('SIGKILL');
+      reject(new Error('ffmpeg tardó demasiado'));
+    }, 20000);
+    ff.stdout.on('data', (c) => out.push(c));
+    ff.stderr.on('data', (c) => (err += c));
+    ff.on('error', (e) => {
+      clearTimeout(timer);
+      reject(e);
+    });
+    ff.on('close', (code) => {
+      clearTimeout(timer);
+      const buf = Buffer.concat(out);
+      code === 0 && buf.length ? resolve(buf) : reject(new Error(`ffmpeg salió con ${code}: ${err.trim().slice(0, 200)}`));
+    });
+    ff.stdin.on('error', () => {});
+    ff.stdin.end(data);
+  });
+}
+
 /** Igual que en el panel: que no deletree MAYÚSCULAS ni lea las risas como letras. */
 export function forSpeech(text) {
   return String(text || '')

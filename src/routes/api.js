@@ -21,9 +21,9 @@ import { deployReaction, finishFocus, remindMeeting, remindWater, runBriefing, s
 import { resetScarePlan } from '../services/scheduler.js';
 import { geocode, getWeather } from '../services/weather.js';
 import { DAY } from '../time.js';
-import { pcmToWav, synthesizeAudio, ttsEnabled } from '../services/voice.js';
+import { anyToPcm, pcmToWav, synthesizeAudio, ttsEnabled } from '../services/voice.js';
 import { VOCES } from '../services/edgeTts.js';
-import { broadcast, listDevices, offerUpdates, recentEvents, setEmotion, speak } from '../ws/robotSocket.js';
+import { broadcast, hearFromPanel, listDevices, offerUpdates, recentEvents, setEmotion, speak } from '../ws/robotSocket.js';
 import { cocinaParaRobot } from '../ws/robotMenu.js';
 import { llamarFede } from '../services/fede.js';
 import { firmwareBinary } from '../services/firmware.js';
@@ -398,6 +398,23 @@ router.post('/robot/talking', (req, res) => res.json({ sentTo: broadcast({ type:
 
 // Token del robot, para copiarlo en firmware/include/secrets.h (solo con la clave de admin)
 router.get('/robot/token', (req, res) => res.json({ token: config.deviceToken }));
+
+// Hablarle al robot desde el celu/PC: el panel manda lo grabado (webm/mp4/wav) y el robot contesta con su voz
+router.post(
+  '/robot/hablar',
+  express.raw({ type: 'audio/*', limit: '8mb' }),
+  asyncRoute(async (req, res) => {
+    if (!Buffer.isBuffer(req.body) || req.body.length < 1000) return res.status(400).json({ error: 'No llegó audio' });
+    const rate = config.voice.inputSampleRate;
+    const pcm = await anyToPcm(req.body, rate);
+    if (pcm.length < rate * 2 * 0.3) return res.json({ text: null });
+    try {
+      res.json({ text: await hearFromPanel(pcm, rate) });
+    } catch (e) {
+      res.status(e.message === 'No hay robot conectado' ? 409 : 500).json({ error: e.message });
+    }
+  }),
+);
 
 router.post('/robot/test', (req, res) => {
   const { what } = req.body || {};

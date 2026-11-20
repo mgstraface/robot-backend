@@ -128,6 +128,27 @@ export async function speak(deviceId, text, emotion = 'neutral', gesture = null)
   return list.length;
 }
 
+/**
+ * Audio grabado en el panel (celu/PC): se transcribe igual que el del robot y el robot contesta con su voz.
+ * Devuelve el texto entendido, o null si no entendió nada.
+ */
+export async function hearFromPanel(pcm, rate) {
+  const [deviceId, device] = [...devices.entries()][0] || [];
+  if (!device) throw new Error('No hay robot conectado');
+  const { ws } = device;
+  send(ws, { type: 'emotion', emotion: 'pensando' });
+  const transcript = await transcribe(pcm, rate);
+  console.log(`[oido] panel ${(pcm.length / 2 / rate).toFixed(1)} s, texto: "${transcript}"`);
+  send(ws, { type: 'transcript', text: transcript });
+  logEvent(deviceId, 'transcript', { text: transcript, from: 'panel' });
+  if (!transcript) {
+    send(ws, { type: 'emotion', emotion: 'curioso' });
+    return null;
+  }
+  await respond(deviceId, device, transcript, 'voice');
+  return transcript;
+}
+
 async function respond(deviceId, device, userText, source) {
   const { ws } = device;
   device.busy = true;
