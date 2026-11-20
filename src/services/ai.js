@@ -92,11 +92,21 @@ export async function callModel({ system, messages, maxTokens }) {
     system,
     messages,
   });
-  return response.content
+  const text = response.content
     .filter((block) => block.type === 'text')
     .map((block) => block.text)
     .join('')
     .trim();
+  return response.stop_reason === 'max_tokens' ? cutAtSentence(text) : text;
+}
+
+/** Si la respuesta se cortó por el límite de tokens, la deja terminada en la última oración completa. */
+export function cutAtSentence(text) {
+  const ends = [...text.matchAll(/[.!?…](?=["')\]]*(\s|$))/g)];
+  const last = ends.length ? ends[ends.length - 1] : null;
+  // si casi no hay oraciones completas, mejor no recortar de más
+  if (!last || last.index + 1 < text.length * 0.4) return text;
+  return text.slice(0, last.index + 1);
 }
 
 // Cuento de terror: respuesta más larga, para leer en voz alta

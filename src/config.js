@@ -27,7 +27,7 @@ export const config = {
     apiKey: process.env.ANTHROPIC_API_KEY,
     // Haiku es el más rápido: para una mascota que habla, la latencia importa más que la profundidad.
     model: process.env.CLAUDE_MODEL || 'claude-haiku-5-5',
-    maxTokens: Number(process.env.CLAUDE_MAX_TOKENS || 300),
+    maxTokens: Number(process.env.CLAUDE_MAX_TOKENS || 500),
     historyLimit: Number(process.env.HISTORY_LIMIT || 12),
   },
 
