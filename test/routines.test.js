@@ -159,8 +159,9 @@ test('briefingInstruction arma el contexto del saludo', () => {
     cityName: 'Rosario',
     events: [{ start, summary: 'Daily' }],
     tz: TZ,
+    dayText: 'viernes 20 de noviembre',
   });
-  assert.match(text, /es la mañana/);
+  assert.match(text, /es la mañana de viernes 20 de noviembre/);
   assert.match(text, /Saludá a Mati/);
   assert.match(text, /En Rosario está 18°C y despejado/);
   assert.match(text, /09:30 Daily/);

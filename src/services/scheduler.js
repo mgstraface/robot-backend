@@ -8,6 +8,7 @@ import { announce } from './announce.js';
 import { pick } from './phrases.js';
 import { getSettings } from '../models/Settings.js';
 import { DAY, isSleepHour, localParts, startOfLocalDay } from '../time.js';
+import { listDevices } from '../ws/robotSocket.js';
 import { upcomingEvents } from './calendar.js';
 import { getFocus, takeFinishedFocus } from './focus.js';
 import { finishFocus, remindMeeting, remindWater, runBriefing, scare } from './routines.js';
@@ -73,10 +74,14 @@ export async function tick(now = Date.now()) {
   // Chiste interno: cada tanto llama a Fede
   if (!getFocus(now)) await safely('fede', () => fedeTick(now));
 
-  // Saludo del día, la primera vez que está despierto
+  // Saludo del día: la primera vez que está despierto Y hay un robot conectado que lo escuche
+  // (si todavía está apagado, espera a que se conecte; después de las 14 h ya no tiene sentido saludar)
   if (s.morningGreeting && state.greetedDay !== dayKey) {
-    state.greetedDay = dayKey;
-    await safely('saludo', () => runBriefing(now));
+    if (p.hour >= 14) state.greetedDay = dayKey;
+    else if (listDevices().length) {
+      state.greetedDay = dayKey;
+      await safely('saludo', () => runBriefing(now));
+    }
   }
 
   // Cumpleaños y fechas: una vez por día, al rato de despertarse

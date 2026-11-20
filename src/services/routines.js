@@ -15,8 +15,11 @@ function momentOfDay(hour) {
 }
 
 /** Texto de contexto (hora, clima y agenda de hoy) para el saludo. Separado para poder testearlo. */
-export function briefingInstruction({ owner, hour, timeText, weatherText, cityName, events, tz }) {
-  const parts = [`Son las ${timeText}, es ${momentOfDay(hour)}. Saludá a ${owner} según el momento del día.`];
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+export function briefingInstruction({ owner, hour, timeText, weatherText, cityName, events, tz, dayText }) {
+  const parts = [`Son las ${timeText}, es ${momentOfDay(hour)}${dayText ? ` de ${dayText}` : ''}. Saludá a ${owner} según el momento del día.`];
   if (weatherText) parts.push(`En ${cityName} está ${weatherText}: contáselo con tu estilo.`);
   if (events.length) {
     const list = events
@@ -49,6 +52,7 @@ export async function runBriefing(now = Date.now()) {
     owner: s.ownerName,
     hour: p.hour,
     timeText: formatTime(now, s.timezone),
+    dayText: `${DIAS[p.weekday]} ${p.day} de ${MESES[p.month - 1]}`,
     weatherText: describeWeather(weather),
     cityName: s.city.name,
     events,
