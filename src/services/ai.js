@@ -86,18 +86,19 @@ export function buildHistory(messages) {
 
 /** Llama al modelo con el historial + el mensaje nuevo. Separado para poder reemplazarlo en tests. */
 export async function callModel({ system, messages, maxTokens }) {
-  const response = await getClient().messages.create({
-    model: config.ai.model,
-    max_tokens: maxTokens || config.ai.maxTokens,
-    system,
-    messages,
-  });
-  const text = response.content
-    .filter((block) => block.type === 'text')
-    .map((block) => block.text)
-    .join('')
-    .trim();
-  return response.stop_reason === 'max_tokens' ? cutAtSentence(text) : text;
+  const base = maxTokens || config.ai.maxTokens;
+  // Si vuelve vacío (p. ej. se gastaron los tokens antes de escribir texto), se reintenta una vez con más margen
+  for (const limit of [base, base * 3]) {
+    const response = await getClient().messages.create({ model: config.ai.model, max_tokens: limit, system, messages });
+    const text = response.content
+      .filter((block) => block.type === 'text')
+      .map((block) => block.text)
+      .join('')
+      .trim();
+    if (text) return response.stop_reason === 'max_tokens' ? cutAtSentence(text) : text;
+    console.error(`[ia] respuesta sin texto (stop_reason=${response.stop_reason}, bloques=${response.content.map((b) => b.type).join(',') || 'ninguno'}, max_tokens=${limit})`);
+  }
+  throw new Error('El modelo no devolvió texto (mirá los logs: "[ia] respuesta sin texto")');
 }
 
 /** Si la respuesta se cortó por el límite de tokens, la deja terminada en la última oración completa. */
