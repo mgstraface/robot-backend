@@ -40,7 +40,7 @@ Z_PISO = Z_BOT + TAPA                # -123,3
 PARED = 2.0
 ZI_TOP = Z_TOP - PARED               # techo por dentro
 R_FRENTE, R_ATRAS = 14.0, 6.0        # esquinas vistas desde arriba
-R_ARRIBA, R_ABAJO = 16.0, 2.5        # redondeo de arriba (cúpula) y de la base
+R_ARRIBA, R_ABAJO = 1.5, 2.5         # arriba casi plano (canto de 1,5): sin cúpula no hay soportes ni hilos al imprimir boca abajo
 
 
 def _k(z):
