@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "config.h"
+#include "speaker.h"
 
 static const i2s_port_t PORT = I2S_NUM_0;
 static const int RATE = 16000;
@@ -134,6 +135,57 @@ String HwTest::micro() {
   for (int i = 0; i < nFirst; i++) out += " " + String(first[i], HEX);
   if (ac[0] < 1 && ac[1] < 1) out += " -> todo quieto (revisar SD->GPIO7, VDD y GND)";
   return out;
+}
+
+String HwTest::eco() {
+  const int rate = RATE;  // 16 kHz
+  const int total = rate * 3;  // 3 s
+  int16_t *rec = (int16_t *)heap_caps_malloc(total * 2, MALLOC_CAP_SPIRAM);
+  if (!rec) return "Eco: no hay memoria";
+  if (!i2sStart(true)) {
+    free(rec);
+    return "Eco: no arranco el I2S";
+  }
+  int32_t buf[256 * 2];
+  float x1 = 0, y1 = 0, x2 = 0, y2 = 0;  // mismos dos filtros de graves que usa el oído
+  int n = 0;
+  uint32_t t0 = millis();
+  size_t got;
+  while (n < total && millis() - t0 < 6000) {
+    if (i2s_read(PORT, buf, sizeof(buf), &got, 500) != ESP_OK) continue;
+    int frames = got / 8;
+    for (int i = 0; i < frames && n < total; i++) {
+      float v = (float)(buf[2 * i] >> 8);
+      float a1 = v - x1 + 0.88f * y1;
+      x1 = v;
+      y1 = a1;
+      float a2 = a1 - x2 + 0.88f * y2;
+      x2 = a1;
+      y2 = a2;
+      if (millis() - t0 < 300) continue;  // descarta el arranque
+      rec[n++] = (int16_t)constrain((int32_t)(a2 / 32.0f), -32768, 32767);
+    }
+  }
+  i2sStop();
+  if (n < rate) {
+    free(rec);
+    return "Eco: no llegaron datos";
+  }
+  double sq = 0;
+  int peak = 1;
+  for (int i = 0; i < n; i++) {
+    sq += (double)rec[i] * rec[i];
+    if (abs(rec[i]) > peak) peak = abs(rec[i]);
+  }
+  float rms = sqrt(sq / n);
+  float k = min(16.0f, 26000.0f / peak);  // sube el volumen para que se oiga
+  for (int i = 0; i < n; i++) rec[i] = (int16_t)constrain((int32_t)(rec[i] * k), -32768, 32767);
+  // lo reproduce el mismo parlante de siempre (copia a su propia memoria)
+  speaker.onStart(n * 2, rate, true);
+  for (int off = 0; off < n * 2; off += 4096) speaker.onData((const uint8_t *)rec + off, min(4096, n * 2 - off));
+  speaker.onEnd();
+  free(rec);
+  return "Eco local: nivel " + String((int)rms) + " pico " + String(peak) + " subido x" + String(k, 1) + " (se reproduce ahora)";
 }
 
 static bool i2cHas(uint8_t addr) {

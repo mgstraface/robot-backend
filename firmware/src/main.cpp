@@ -260,7 +260,7 @@ void onServerMessage(const char *payload, size_t length) {
     String what = msg["what"] | "";
     if (what == "reiniciar") ESP.restart();
     if (what == "servos") servos.gesture("negar");
-    if (what == "audio" || what == "micro" || what == "sensores") pendingTest = what;  // se corre en loop()
+    if (what == "audio" || what == "micro" || what == "eco" || what == "sensores") pendingTest = what;  // se corre en loop()
     if (what == "pantalla") {
       face.setEmotion("feliz");
       face.showText("Prueba de pantalla", 3000);
@@ -620,14 +620,14 @@ void loop() {
   if (pendingTest.length() && !speaker.busy() && !listener.listening()) {
     String what = pendingTest;
     pendingTest = "";
-    if (what == "micro") {
+    if (what == "micro" || what == "eco") {
       servos.stop();  // sin señal a los servos: que su ruido no se meta en la medición
       delay(400);
     }
-    face.showText(what == "audio" ? "Prueba de parlante..." : what == "micro" ? "Hablale al microfono..." : "Toca cabeza, panza y espalda", 6000);
+    face.showText(what == "audio" ? "Prueba de parlante..." : what == "micro" ? "Hablale al microfono..." : what == "eco" ? "Habla 3 s: te lo repito" : "Toca cabeza, panza y espalda", 6000);
     face.update(millis());
     flushScreen();
-    String res = what == "audio" ? HwTest::audio() : what == "micro" ? HwTest::micro() : HwTest::sensores();
+    String res = what == "audio" ? HwTest::audio() : what == "micro" ? HwTest::micro() : what == "eco" ? HwTest::eco() : HwTest::sensores();
     Serial.printf("[prueba] %s\n", res.c_str());
     face.showText(res, 12000);
     if (wsConnected) {
