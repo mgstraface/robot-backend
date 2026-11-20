@@ -15,7 +15,8 @@ static const uint16_t C_YELLOW = 0xFE60;
 static const uint16_t C_GRAY = 0xBDF7;
 static const uint16_t C_BLUE = 0x5D7F;
 
-static const float L = 78, R = 162, Yc = 90;  // centros de los ojos (como en el panel)
+static const float EK = 1.4f;                   // ojos más grandes: aprovechan mejor la pantalla de 320×172
+static const float L = 60, R = 180, Yc = 90;  // centros de los ojos (más separados; igual que en el panel)
 
 // Emociones que no vuelven solas a neutral
 static bool sticky(const String &e) { return e == "neutral" || e == "pensando" || e == "escuchando" || e == "dormido"; }
@@ -186,18 +187,22 @@ bool Face::update(uint32_t now) {
 }
 
 void Face::eye(float cx, float w, float h, float dy, float dx) {
+  w *= EK;
+  h *= EK;
+  dy *= EK;
+  dx *= EK;
   if (blinking_) h = max(4.0f, h * 0.08f);
-  float r = min(18.0f, w / 2);
+  float r = min(18.0f * EK, w / 2);
   dx += glanceDx_;
   g_->fillRoundRect(X(cx - w / 2 + dx), Y(Yc - h / 2 + dy), (int)w, (int)h, (int)min(r, h / 2), eye_);
 }
 
 // Párpado: tapa la parte de arriba del ojo con una diagonal (inner = lado de la nariz)
 void Face::lid(float cx, float inner, float outer, bool left) {
-  float top = Yc - 34;
-  float yl = left ? outer : inner;
-  float yr = left ? inner : outer;
-  int x0 = X(cx - 40), x1 = X(cx + 40);
+  float top = Yc - 34 * EK;
+  float yl = (left ? outer : inner) * EK;
+  float yr = (left ? inner : outer) * EK;
+  int x0 = X(cx - 40 * EK), x1 = X(cx + 40 * EK);
   g_->fillRect(x0, 0, x1 - x0, Y(top), C_BG);
   g_->fillTriangle(x0, Y(top), x1, Y(top), x0, Y(top + yl), C_BG);
   g_->fillTriangle(x1, Y(top), x1, Y(top + yr), x0, Y(top + yl), C_BG);
@@ -238,9 +243,9 @@ void Face::mouth(const char *kind) {
 }
 
 void Face::heart(float cx, float cy) {
-  g_->fillCircle(X(cx - 10), Y(cy - 6), 12, eye_);
-  g_->fillCircle(X(cx + 10), Y(cy - 6), 12, eye_);
-  g_->fillTriangle(X(cx - 22), Y(cy - 2), X(cx + 22), Y(cy - 2), X(cx), Y(cy + 22), eye_);
+  g_->fillCircle(X(cx - 10 * EK), Y(cy - 6 * EK), (int)(12 * EK), eye_);
+  g_->fillCircle(X(cx + 10 * EK), Y(cy - 6 * EK), (int)(12 * EK), eye_);
+  g_->fillTriangle(X(cx - 22 * EK), Y(cy - 2 * EK), X(cx + 22 * EK), Y(cy - 2 * EK), X(cx), Y(cy + 22 * EK), eye_);
 }
 
 void Face::terrorEyes() {
@@ -280,10 +285,10 @@ void Face::drawAction(uint32_t now) {
     int off = (t / 25) % 40;
     for (int i = -1; i < 9; i++) g_->fillRect(i * 40 + off, 0, 20, h, C_RED);
     float b = sinf(t / 120.0f) * 6;
-    thickQuad(L - 18, Yc - 30 + b, L - 4, Yc - 24 + b, L + 10, Yc - 18 + b, 4, eye_);
-    thickQuad(L + 10, Yc - 18 + b, L - 4, Yc - 12 + b, L - 18, Yc - 6 + b, 4, eye_);
-    thickQuad(R + 18, Yc - 30 + b, R + 4, Yc - 24 + b, R - 10, Yc - 18 + b, 4, eye_);
-    thickQuad(R - 10, Yc - 18 + b, R + 4, Yc - 12 + b, R + 18, Yc - 6 + b, 4, eye_);
+    thickQuad(L - 18 * EK, Yc - 30 * EK + b, L - 4 * EK, Yc - 24 * EK + b, L + 10 * EK, Yc - 18 * EK + b, 4, eye_);
+    thickQuad(L + 10 * EK, Yc - 18 * EK + b, L - 4 * EK, Yc - 12 * EK + b, L - 18 * EK, Yc - 6 * EK + b, 4, eye_);
+    thickQuad(R + 18 * EK, Yc - 30 * EK + b, R + 4 * EK, Yc - 24 * EK + b, R - 10 * EK, Yc - 18 * EK + b, 4, eye_);
+    thickQuad(R - 10 * EK, Yc - 18 * EK + b, R + 4 * EK, Yc - 12 * EK + b, R + 18 * EK, Yc - 6 * EK + b, 4, eye_);
     g_->setTextSize(5);
     int y = Y(150) - 34 + (int)b;
     g_->setTextColor(C_BG);
@@ -394,10 +399,10 @@ void Face::drawVector(uint32_t now) {
   } else
 
   if (e == "feliz") {
-    thickQuad(L - 22, Yc + 8, L, Yc - 26, L + 22, Yc + 8, 4.5, eye_);
-    thickQuad(R - 22, Yc + 8, R, Yc - 26, R + 22, Yc + 8, 4.5, eye_);
-    g_->fillEllipse(X(L - 18), Y(Yc + 30), 12, 6, C_CHEEK);
-    g_->fillEllipse(X(R + 18), Y(Yc + 30), 12, 6, C_CHEEK);
+    thickQuad(L - 22 * EK, Yc + 8 * EK, L, Yc - 26 * EK, L + 22 * EK, Yc + 8 * EK, 4.5, eye_);
+    thickQuad(R - 22 * EK, Yc + 8 * EK, R, Yc - 26 * EK, R + 22 * EK, Yc + 8 * EK, 4.5, eye_);
+    g_->fillEllipse(X(L - 18 * EK), Y(Yc + 30 * EK), 12, 6, C_CHEEK);
+    g_->fillEllipse(X(R + 18 * EK), Y(Yc + 30 * EK), 12, 6, C_CHEEK);
     mouth("sonrisa");
   } else if (e == "triste") {
     eye(L, 40, 48, 6);
@@ -412,8 +417,8 @@ void Face::drawVector(uint32_t now) {
     lid(R, 30, 8, false);
     mouth("grr");
   } else if (e == "sorprendido" || e == "asustado") {
-    int r = e == "asustado" ? 26 : 28;
-    int p = e == "asustado" ? 5 : 9;
+    int r = (int)((e == "asustado" ? 26 : 28) * EK);
+    int p = (int)((e == "asustado" ? 5 : 9) * EK);
     int jitter = e == "asustado" ? (int)((now / 60) % 3) - 1 : 0;
     g_->fillCircle(X(L) + jitter, Y(Yc), r, eye_);
     g_->fillCircle(X(R) + jitter, Y(Yc), r, eye_);
@@ -428,14 +433,14 @@ void Face::drawVector(uint32_t now) {
       g_->fillCircle(X(R - 10 + i * 14), Y(Yc + 52), 4, on ? eye_ : (uint16_t)(eye_ >> 1 & 0x7BEF));
     }
   } else if (e == "dormido") {
-    thickQuad(L - 20, Yc + 4, L, Yc + 16, L + 20, Yc + 4, 4.5, eye_);
-    thickQuad(R - 20, Yc + 4, R, Yc + 16, R + 20, Yc + 4, 4.5, eye_);
+    thickQuad(L - 20 * EK, Yc + 4 * EK, L, Yc + 16 * EK, L + 20 * EK, Yc + 4 * EK, 4.5, eye_);
+    thickQuad(R - 20 * EK, Yc + 4 * EK, R, Yc + 16 * EK, R + 20 * EK, Yc + 4 * EK, 4.5, eye_);
     g_->setTextColor(eye_);
     g_->setTextSize(2);
-    g_->setCursor(X(R + 30), Y(Yc - 36));
+    g_->setCursor(X(R + 30 * EK), Y(Yc - 36 * EK));
     g_->print("z");
     g_->setTextSize(1);
-    g_->setCursor(X(R + 46), Y(Yc - 50));
+    g_->setCursor(X(R + 46 * EK), Y(Yc - 50 * EK));
     g_->print("z");
   } else if (e == "amor") {
     heart(L, Yc);
@@ -451,27 +456,27 @@ void Face::drawVector(uint32_t now) {
   } else if (e == "riendo" || e == "emocionado") {
     for (int k = 0; k < 2; k++) {
       float cx = k ? R : L, s = k ? -1 : 1;
-      g_->drawLine(X(cx - 18 * s), Y(Yc - 12), X(cx + 10 * s), Y(Yc), eye_);
-      g_->drawLine(X(cx + 10 * s), Y(Yc), X(cx - 18 * s), Y(Yc + 12), eye_);
-      thickQuad(cx - 18 * s, Yc - 12, cx - 4 * s, Yc - 6, cx + 10 * s, Yc, 3, eye_);
-      thickQuad(cx + 10 * s, Yc, cx - 4 * s, Yc + 6, cx - 18 * s, Yc + 12, 3, eye_);
+      g_->drawLine(X(cx - 18 * EK * s), Y(Yc - 12 * EK), X(cx + 10 * EK * s), Y(Yc), eye_);
+      g_->drawLine(X(cx + 10 * EK * s), Y(Yc), X(cx - 18 * EK * s), Y(Yc + 12 * EK), eye_);
+      thickQuad(cx - 18 * EK * s, Yc - 12 * EK, cx - 4 * EK * s, Yc - 6 * EK, cx + 10 * EK * s, Yc, 3, eye_);
+      thickQuad(cx + 10 * EK * s, Yc, cx - 4 * EK * s, Yc + 6 * EK, cx - 18 * EK * s, Yc + 12 * EK, 3, eye_);
     }
     mouth("carcajada");
   } else if (e == "muerto") {
     for (int k = 0; k < 2; k++) {
       float cx = k ? R : L;
-      thickQuad(cx - 16, Yc - 16, cx, Yc, cx + 16, Yc + 16, 4, eye_);
-      thickQuad(cx + 16, Yc - 16, cx, Yc, cx - 16, Yc + 16, 4, eye_);
+      thickQuad(cx - 16 * EK, Yc - 16 * EK, cx, Yc, cx + 16 * EK, Yc + 16 * EK, 4, eye_);
+      thickQuad(cx + 16 * EK, Yc - 16 * EK, cx, Yc, cx - 16 * EK, Yc + 16 * EK, 4, eye_);
     }
     g_->fillRoundRect(X(104), Y(140), 42, 5, 2, eye_);
     g_->fillRoundRect(X(128), Y(142), 14, 16, 6, C_TONGUE);
   } else if (e == "llorando") {
-    thickQuad(L - 20, Yc, L, Yc - 14, L + 20, Yc, 4, eye_);
-    thickQuad(R - 20, Yc, R, Yc - 14, R + 20, Yc, 4, eye_);
+    thickQuad(L - 20 * EK, Yc, L, Yc - 14 * EK, L + 20 * EK, Yc, 4, eye_);
+    thickQuad(R - 20 * EK, Yc, R, Yc - 14 * EK, R + 20 * EK, Yc, 4, eye_);
     int off = (now / 60) % 18;
     for (int y = 6 + off; y < 76; y += 18) {
-      g_->fillRoundRect(X(L - 7), Y(Yc + y), 5, 8, 2, C_TEAR);
-      g_->fillRoundRect(X(R + 3), Y(Yc + y), 5, 8, 2, C_TEAR);
+      g_->fillRoundRect(X(L - 7 * EK), Y(Yc + y), 5, 8, 2, C_TEAR);
+      g_->fillRoundRect(X(R + 3 * EK), Y(Yc + y), 5, 8, 2, C_TEAR);
     }
     mouth("ondulada");
   } else {
