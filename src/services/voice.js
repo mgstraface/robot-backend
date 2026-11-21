@@ -215,3 +215,52 @@ export async function audioForRobot(audio, sampleRate = 24000) {
     return audio;
   }
 }
+
+// ---- IMA ADPCM (4 bits por muestra): el audio viaja 4 veces más liviano por el WiFi flojo del robot
+const IMA_STEPS = [7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,27086,29794,32767];
+const IMA_INDEX = [-1, -1, -1, -1, 2, 4, 6, 8];
+
+/** PCM 16 bits mono → IMA ADPCM sin cabecera (predictor 0, índice 0; nibble bajo primero). */
+export function pcmToAdpcm(pcm) {
+  const n = Math.floor(pcm.length / 2);
+  const out = Buffer.alloc(Math.ceil(n / 2));
+  let pred = 0;
+  let idx = 0;
+  for (let i = 0; i < n; i++) {
+    const sample = pcm.readInt16LE(i * 2);
+    let step = IMA_STEPS[idx];
+    let diff = sample - pred;
+    let code = 0;
+    if (diff < 0) {
+      code = 8;
+      diff = -diff;
+    }
+    let vp = step >> 3;
+    if (diff >= step) { code |= 4; diff -= step; vp += step; }
+    step >>= 1;
+    if (diff >= step) { code |= 2; diff -= step; vp += step; }
+    step >>= 1;
+    if (diff >= step) { code |= 1; vp += step; }
+    pred = code & 8 ? pred - vp : pred + vp;
+    pred = Math.max(-32768, Math.min(32767, pred));
+    idx = Math.max(0, Math.min(88, idx + IMA_INDEX[code & 7]));
+    if (i & 1) out[i >> 1] |= code << 4;
+    else out[i >> 1] = code;
+  }
+  return out;
+}
+
+/** Los firmwares >= 0.9.0 entienden ADPCM. */
+export function supportsAdpcm(firmware) {
+  const [a = 0, b = 0] = String(firmware || '').split('.').map(Number);
+  return a > 0 || b >= 9;
+}
+
+/** Deja el audio listo para este robot: ADPCM a 16 kHz si sabe decodificarlo, PCM 24 kHz si no. */
+export async function audioForDevice(audio, firmware) {
+  if (!supportsAdpcm(firmware)) return audioForRobot(audio);
+  const a = await audioForRobot(audio, 16000);
+  if (!a || a.format !== 'pcm') return a;
+  const pcm = a.sampleRate && a.sampleRate !== 16000 ? resample(a.data, a.sampleRate, 16000) : a.data;
+  return { format: 'adpcm', data: pcmToAdpcm(pcm), sampleRate: 16000, samples: Math.floor(pcm.length / 2) };
+}

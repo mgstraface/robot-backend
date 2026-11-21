@@ -8,7 +8,7 @@ import { cocinaAccion, getCocina } from '../services/cocina.js';
 import { latestFirmware } from '../services/firmware.js';
 import { moodEvent } from '../services/mood.js';
 import { cocinaParaRobot, handleMenu } from './robotMenu.js';
-import { audioForRobot, sttEnabled, synthesizeAudio, transcribe, ttsEnabled } from '../services/voice.js';
+import { audioForDevice, sttEnabled, synthesizeAudio, transcribe, ttsEnabled } from '../services/voice.js';
 
 /*
  * Protocolo robot ⇄ servidor (ver README para el detalle):
@@ -103,17 +103,19 @@ export function setEmotion(deviceId, emotion) {
  * reproducirlo) y recién al final van la respuesta con el gesto y la orden de empezar, así el
  * movimiento, el texto y la voz arrancan al mismo tiempo.
  */
-async function deliverReply(ws, reply, audio) {
-  const a = audio ? await audioForRobot(audio) : null;
+async function deliverReply(ws, reply, audio, firmware) {
+  const a = audio ? await audioForDevice(audio, firmware) : null;
   if (!a) return send(ws, reply);
-  const { format, data, sampleRate } = a;
-  send(ws, { type: 'audio_start', format, sampleRate, bytes: data.length });
+  const { format, data, sampleRate, samples } = a;
+  const t0 = Date.now();
+  send(ws, { type: 'audio_start', format, sampleRate, bytes: data.length, ...(samples ? { samples } : {}) });
   for (let i = 0; i < data.length; i += AUDIO_CHUNK_BYTES) {
     if (ws.readyState !== ws.OPEN) return;
     ws.send(data.subarray(i, i + AUDIO_CHUNK_BYTES));
   }
   send(ws, reply);
   send(ws, { type: 'audio_end' });
+  console.log(`[voz] audio ${format} ${data.length} bytes enviado en ${Date.now() - t0} ms`);
 }
 
 /** Le hace decir un texto al robot, con emoción y (si hay voz configurada) audio. */
@@ -123,7 +125,7 @@ export async function speak(deviceId, text, emotion = 'neutral', gesture = null)
   const audio = ttsEnabled() ? await synthesizeAudio(text).catch(() => null) : null;
   for (const [id, d] of list) {
     logEvent(id, 'reply', { text, emotion, from: 'panel' });
-    await deliverReply(d.ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) }, audio);
+    await deliverReply(d.ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) }, audio, d.firmware);
   }
   return list.length;
 }
@@ -157,7 +159,7 @@ async function respond(deviceId, device, userText, source) {
     const { text, emotion, gesture } = await chat({ deviceId, text: userText, source });
     logEvent(deviceId, 'reply', { text, emotion, gesture });
     const audio = ttsEnabled() ? await synthesizeAudio(text).catch((e) => (console.error('[voz]', e.message), null)) : null;
-    await deliverReply(ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) }, audio);
+    await deliverReply(ws, { type: 'reply', text, emotion, ...(gesture ? { gesture } : {}) }, audio, device.firmware);
   } finally {
     device.busy = false;
   }
@@ -168,6 +170,7 @@ async function handleJson(deviceId, device, msg) {
   switch (msg.type) {
     case 'hello':
       device.build = Number(msg.build) || 0;
+      device.firmware = String(msg.firmware || '');
       logEvent(deviceId, 'hello', { firmware: msg.firmware, build: device.build });
       // recién conectado: si hay firmware nuevo, que se actualice (salvo que esté cocinando)
       setTimeout(() => offerUpdates().catch((e) => console.error('[ota]', e.message)), 5000);

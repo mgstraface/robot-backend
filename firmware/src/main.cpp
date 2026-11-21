@@ -292,7 +292,10 @@ void onServerMessage(const char *payload, size_t length) {
     p.putInt("volumen", v);
     p.end();
   } else if (!strcmp(type, "audio_start")) {
-    speaker.onStart(msg["bytes"] | 0, msg["sampleRate"] | 24000, String(msg["format"] | "") == "pcm");
+    {
+    String fmt = String(msg["format"] | "");
+    speaker.onStart(msg["bytes"] | 0, msg["sampleRate"] | 24000, fmt == "pcm", fmt == "adpcm", msg["samples"] | 0);
+  }
   } else if (!strcmp(type, "audio_end")) {
     speaker.onEnd();
   } else if (!strcmp(type, "talking")) {

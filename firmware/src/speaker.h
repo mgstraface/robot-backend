@@ -5,7 +5,7 @@
 // Se junta todo en la PSRAM y recién ahí se reproduce por el MAX98357A (así el WiFi no corta la voz).
 class Speaker {
  public:
-  void onStart(uint32_t bytes, uint32_t sampleRate, bool pcm);
+  void onStart(uint32_t bytes, uint32_t sampleRate, bool pcm, bool adpcm = false, uint32_t samples = 0);
   void onData(const uint8_t *data, size_t len);
   void onEnd();     // llegó todo: empieza a sonar
   void abort();     // se cortó la conexión a mitad de camino
@@ -25,6 +25,9 @@ class Speaker {
   float gain_ = 0.6f;
   bool receiving_ = false;
   bool playing_ = false;
+  bool adpcm_ = false;
+  size_t samples_ = 0;     // total de muestras (ADPCM)
+  int pred_ = 0, idx_ = 0; // estado del decodificador ADPCM
   bool ignoring_ = false;  // formato que no sabemos reproducir (ej. MP3)
   int16_t out_[512];       // estéreo pendiente de enviar
   size_t outLen_ = 0, outPos_ = 0;

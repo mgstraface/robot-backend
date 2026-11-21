@@ -19,11 +19,17 @@ void Speaker::release() {
   outLen_ = outPos_ = 0;
 }
 
-void Speaker::onStart(uint32_t bytes, uint32_t sampleRate, bool pcm) {
+static const int16_t IMA_STEPS[89] = {7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,27086,29794,32767};
+static const int8_t IMA_INDEX[8] = {-1, -1, -1, -1, 2, 4, 6, 8};
+
+void Speaker::onStart(uint32_t bytes, uint32_t sampleRate, bool pcm, bool adpcm, uint32_t samples) {
   if (playing_) return;  // ya está hablando: ignora lo nuevo
   release();
   receiving_ = false;
-  ignoring_ = !pcm || bytes == 0 || bytes > MAX_BYTES;
+  adpcm_ = adpcm;
+  samples_ = samples;
+  pred_ = idx_ = 0;
+  ignoring_ = !(pcm || adpcm) || bytes == 0 || bytes > MAX_BYTES;
   if (ignoring_) {
     Serial.printf("[voz] audio ignorado (pcm=%d, bytes=%u)\n", (int)pcm, (unsigned)bytes);
     return;
@@ -90,7 +96,7 @@ void Speaker::onEnd() {
   outLen_ = outPos_ = 0;
   playing_ = true;
   speakerTalking(true);
-  Serial.printf("[voz] reproduciendo %u muestras a %u Hz\n", (unsigned)(got_ / 2), (unsigned)rate_);
+  Serial.printf("[voz] reproduciendo %u bytes (%s) a %u Hz\n", (unsigned)got_, adpcm_ ? "adpcm" : "pcm", (unsigned)rate_);
 }
 
 void Speaker::finish() {
@@ -105,7 +111,7 @@ void Speaker::finish() {
 
 void Speaker::update() {
   if (!playing_) return;
-  const size_t total = got_ / 2;
+  const size_t total = adpcm_ ? min(samples_, got_ * 2) : got_ / 2;
   // llena el colchón del I2S hasta donde entre sin esperar
   for (int guard = 0; guard < 16; guard++) {
     if (outPos_ >= outLen_) {
@@ -121,7 +127,22 @@ void Speaker::update() {
       }
       size_t n = min((size_t)256, total - pos_);
       for (size_t i = 0; i < n; i++) {
-        int16_t v = (int16_t)(buf_[pos_ + i] * gain_);
+        int16_t raw;
+        if (adpcm_) {
+          uint8_t b = ((const uint8_t *)buf_)[(pos_ + i) >> 1];
+          int code = ((pos_ + i) & 1) ? (b >> 4) : (b & 15);
+          int step = IMA_STEPS[idx_];
+          int vp = step >> 3;
+          if (code & 4) vp += step;
+          if (code & 2) vp += step >> 1;
+          if (code & 1) vp += step >> 2;
+          pred_ = constrain(pred_ + ((code & 8) ? -vp : vp), -32768, 32767);
+          idx_ = constrain(idx_ + IMA_INDEX[code & 7], 0, 88);
+          raw = (int16_t)pred_;
+        } else {
+          raw = buf_[pos_ + i];
+        }
+        int16_t v = (int16_t)(raw * gain_);
         out_[2 * i] = v;
         out_[2 * i + 1] = v;
       }
